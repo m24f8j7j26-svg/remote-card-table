@@ -330,7 +330,16 @@ function clearRoomCode() {
 }
 
 function takeStock() {
-  if (!isMyTurn() || state.turnStage !== "draw") return;
+  if (!isMyTurn()) return;
+  if (state.turnStage === "firstDiscard") {
+    const amount = Math.min(rule().draw, state.stock.length);
+    activeCards(mySeat).push(...state.stock.splice(0, amount));
+    state.turnStage = "play";
+    state.message = `${seatNames[mySeat]} skipped the first discard and drew ${amount} from stock.`;
+    broadcast();
+    return;
+  }
+  if (state.turnStage !== "draw") return;
   const amount = Math.min(rule().draw, state.stock.length);
   activeCards(mySeat).push(...state.stock.splice(0, amount));
   state.turnStage = "play";
@@ -370,6 +379,14 @@ function canTakeDiscard(seat) {
   const matches = activeCards(seat).filter((card) => card.rank === top.rank && !isWild(card));
   if (matches.length < 2) return { ok: false, reason: `Need two natural ${rankName(top.rank)}s` };
   return { ok: true };
+}
+
+function handleDiscardPileClick() {
+  if (state.turnStage === "firstDiscard") {
+    takeFirstDiscard();
+    return;
+  }
+  takeDiscard();
 }
 
 function meldSelected(targetIndex = null) {
@@ -680,8 +697,8 @@ function renderActions() {
     return;
   }
   if (isMyTurn() && state.turnStage === "firstDiscard") {
-    addAction("Take first discard", takeFirstDiscard);
-    addAction("Skip first discard", skipFirstDiscard);
+    addAction("Take shown discard", takeFirstDiscard);
+    addAction("Skip and choose draw", skipFirstDiscard);
   }
   if (isMyTurn() && state.turnStage === "firstDiscardTaken") {
     addAction("Discard selected", discardSelected);
@@ -740,7 +757,7 @@ els.hostBtn.addEventListener("click", hostRoom);
 els.joinBtn.addEventListener("click", joinRoom);
 els.clearRoomBtn.addEventListener("click", clearRoomCode);
 els.stockBtn.addEventListener("click", takeStock);
-els.discardBtn.addEventListener("click", takeDiscard);
+els.discardBtn.addEventListener("click", handleDiscardPileClick);
 els.newRoundBtn.addEventListener("click", () => {
   state = createGame(state);
   selected.clear();
