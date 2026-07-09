@@ -9,6 +9,7 @@ const roundRules = [
   { draw: 4, open: 120, books: 4 },
   { draw: 5, open: 150, books: 5 },
 ];
+const localSessionKey = "remote-card-table-handfoot-session-v1";
 
 const els = {
   hostBtn: document.querySelector("#hostBtn"),
@@ -46,7 +47,8 @@ let mySeat = null;
 let syncMode = "peer";
 let pollTimer = null;
 let selected = new Set();
-let state = createGame();
+const savedSession = loadLocalSession();
+let state = savedSession?.state || createGame();
 let peer = null;
 let peerConn = null;
 
@@ -89,6 +91,28 @@ function createGame(previous = null) {
     wentOut: null,
     message: "South may take the first discard card, or skip it and draw normally.",
   };
+}
+
+function loadLocalSession() {
+  try {
+    const session = JSON.parse(localStorage.getItem(localSessionKey));
+    if (session?.state?.game === "handfoot") return session;
+  } catch (error) {
+    localStorage.removeItem(localSessionKey);
+  }
+  return null;
+}
+
+function saveLocalSession() {
+  try {
+    localStorage.setItem(localSessionKey, JSON.stringify({
+      state,
+      room: els.roomInput.value.trim().toUpperCase(),
+      updatedAt: Date.now(),
+    }));
+  } catch (error) {
+    // Local storage can be unavailable in private browsing; the game still works without refresh restore.
+  }
 }
 
 function rule() {
@@ -291,6 +315,7 @@ function setConnection(text) {
 function clearRoomCode() {
   clearInterval(pollTimer);
   pollTimer = null;
+  localStorage.removeItem(localSessionKey);
   peerConn?.close();
   peer?.destroy();
   peerConn = null;
@@ -560,6 +585,7 @@ function render() {
   renderMelds("north", els.northMelds);
   renderHand();
   renderActions();
+  saveLocalSession();
 }
 
 function renderSeats() {
@@ -724,6 +750,7 @@ els.roomInput.addEventListener("input", () => {
   render();
 });
 
+if (savedSession?.room) els.roomInput.value = savedSession.room;
 render();
 fetch("/api/health", { cache: "no-store" })
   .then((response) => {
