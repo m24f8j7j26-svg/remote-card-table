@@ -56,6 +56,17 @@
   flex-wrap: wrap;
 }
 
+.hf-table-controls {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.85rem;
+  width: min(100%, 560px);
+}
+
+.hf-table-controls button {
+  min-width: 9rem;
+}
+
 .pile {
   display: grid;
   place-items: center;
@@ -139,6 +150,15 @@
 @media (max-width: 780px) {
   .hf-layout,
   .hf-melds {
+    grid-template-columns: 1fr;
+  }
+
+  .hf-table {
+    min-height: 300px;
+  }
+
+  .hf-table-controls {
+    display: grid;
     grid-template-columns: 1fr;
   }
 }

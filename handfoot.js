@@ -594,7 +594,18 @@ function renderHand() {
 
 function renderActions() {
   els.actionControls.innerHTML = "";
-  if (!mySeat || state.wentOut) return;
+  if (!mySeat) {
+    addAction("Host or join to play", () => {}, true);
+    return;
+  }
+  if (state.wentOut) {
+    addAction("Round complete", () => {}, true);
+    return;
+  }
+  if (!isMyTurn()) {
+    addAction(`Waiting for ${seatNames[state.currentTurn]}`, () => {}, true);
+    return;
+  }
   if (isMyTurn() && state.turnStage === "firstDiscard") {
     addAction("Take first discard", takeFirstDiscard);
     addAction("Skip first discard", skipFirstDiscard);
