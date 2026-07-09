@@ -7,6 +7,7 @@ const PORT = Number(process.env.PORT || 4173);
 const ROOT = __dirname;
 const MAX_BODY = 2 * 1024 * 1024;
 const ROOM_TTL_MS = 12 * 60 * 60 * 1000;
+const PRESENCE_ONLINE_MS = 15 * 1000;
 const rooms = new Map();
 
 const mimeTypes = {
@@ -74,6 +75,19 @@ function cleanRooms() {
   }
 }
 
+function publicPresence(room) {
+  const now = Date.now();
+  return Object.fromEntries(["south", "north"].map((seat) => {
+    const entry = room.presence?.[seat];
+    if (!entry) return [seat, { online: false, lastSeenAgoMs: null }];
+    const lastSeenAgoMs = now - entry.updatedAt;
+    return [seat, {
+      online: lastSeenAgoMs <= PRESENCE_ONLINE_MS,
+      lastSeenAgoMs,
+    }];
+  }));
+}
+
 async function handleApi(req, res, url) {
   if (req.method === "OPTIONS") {
     sendJson(res, 204, {});
@@ -89,8 +103,29 @@ async function handleApi(req, res, url) {
     const body = await readJson(req);
     const game = body.state && body.state.game;
     const code = makeRoomCode(game === "handfoot" ? "CARDS" : "SPADES");
-    rooms.set(code, { state: body.state, updatedAt: Date.now() });
+    rooms.set(code, { state: body.state, presence: {}, updatedAt: Date.now() });
     sendJson(res, 201, { room: code });
+    return true;
+  }
+
+  const presenceMatch = url.pathname.match(/^\/api\/rooms\/([^/]+)\/presence$/);
+  if (presenceMatch && req.method === "POST") {
+    cleanRooms();
+    const code = decodeURIComponent(presenceMatch[1]).toUpperCase();
+    const room = rooms.get(code);
+    if (!room) {
+      sendJson(res, 404, { error: "room not found" });
+      return true;
+    }
+    const body = await readJson(req);
+    if (!["south", "north"].includes(body.seat)) {
+      sendJson(res, 400, { error: "invalid seat" });
+      return true;
+    }
+    room.presence = room.presence || {};
+    room.presence[body.seat] = { updatedAt: Date.now() };
+    room.updatedAt = Date.now();
+    sendJson(res, 200, { presence: publicPresence(room) });
     return true;
   }
 
@@ -103,7 +138,7 @@ async function handleApi(req, res, url) {
       return true;
     }
     room.updatedAt = Date.now();
-    sendJson(res, 200, { state: room.state });
+    sendJson(res, 200, { state: room.state, presence: publicPresence(room) });
     return true;
   }
 

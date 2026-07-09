@@ -46,6 +46,9 @@ let role = null;
 let mySeat = null;
 let syncMode = "peer";
 let pollTimer = null;
+let presenceTimer = null;
+let presence = {};
+let connectionText = "Not connected";
 let selected = new Set();
 const savedSession = loadLocalSession();
 let state = savedSession?.state || createGame();
@@ -236,6 +239,7 @@ async function createRoom() {
   els.roomInput.value = payload.room;
   setConnection("Room ready");
   startPolling(payload.room);
+  startPresence(payload.room);
   render();
 }
 
@@ -257,9 +261,12 @@ async function joinRoom() {
     render();
     return;
   }
-  state = (await response.json()).state;
+  const payload = await response.json();
+  state = payload.state;
+  presence = payload.presence || {};
   setConnection("Connected");
   startPolling(room);
+  startPresence(room);
   render();
 }
 
@@ -288,9 +295,34 @@ function startPolling(room) {
   pollTimer = setInterval(async () => {
     const response = await fetch(`/api/rooms/${encodeURIComponent(room)}/state`);
     if (!response.ok) return;
-    state = (await response.json()).state;
+    const payload = await response.json();
+    state = payload.state;
+    presence = payload.presence || presence;
     render();
   }, 650);
+}
+
+function startPresence(room) {
+  clearInterval(presenceTimer);
+  sendPresence(room);
+  presenceTimer = setInterval(() => sendPresence(room), 5000);
+}
+
+async function sendPresence(room) {
+  if (!room || syncMode !== "server" || !mySeat) return;
+  try {
+    const response = await fetch(`/api/rooms/${encodeURIComponent(room)}/presence`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ seat: mySeat }),
+    });
+    if (!response.ok) return;
+    const payload = await response.json();
+    presence = payload.presence || presence;
+    renderConnection();
+  } catch (error) {
+    setConnection("Relay presence failed");
+  }
 }
 
 async function broadcast() {
@@ -309,12 +341,36 @@ async function broadcast() {
 }
 
 function setConnection(text) {
-  els.connectionStatus.textContent = text;
+  connectionText = text;
+  renderConnection();
+}
+
+function renderConnection() {
+  els.connectionStatus.textContent = `${connectionText}${partnerPresenceText()}`;
+}
+
+function partnerPresenceText() {
+  if (syncMode !== "server" || !role || !mySeat) return "";
+  const seat = nextSeat(mySeat);
+  const partner = presence[seat];
+  if (partner?.online) return ` • ${seatNames[seat]} online`;
+  if (typeof partner?.lastSeenAgoMs === "number") return ` • ${seatNames[seat]} last seen ${formatAgo(partner.lastSeenAgoMs)}`;
+  return ` • waiting for ${seatNames[seat]}`;
+}
+
+function formatAgo(ms) {
+  const seconds = Math.max(1, Math.round(ms / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.round(seconds / 60);
+  return `${minutes}m ago`;
 }
 
 function clearRoomCode() {
   clearInterval(pollTimer);
+  clearInterval(presenceTimer);
   pollTimer = null;
+  presenceTimer = null;
+  presence = {};
   localStorage.removeItem(localSessionKey);
   peerConn?.close();
   peer?.destroy();
@@ -596,6 +652,7 @@ function render() {
   els.joinBtn.disabled = Boolean(role);
   els.copyBtn.disabled = !els.roomInput.value.trim();
   els.roomStatus.textContent = els.roomInput.value.trim().toUpperCase() || "-";
+  renderConnection();
   els.seatStatus.textContent = mySeat ? seatNames[mySeat] : "Choose Host or Join";
   els.southScore.textContent = state.scores.south;
   els.northScore.textContent = state.scores.north;

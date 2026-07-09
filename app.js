@@ -35,6 +35,9 @@ let mySeat = null;
 let state = createGame();
 let syncMode = "peer";
 let pollTimer = null;
+let presenceTimer = null;
+let presence = {};
+let connectionText = "Not connected";
 let peer = null;
 let peerConn = null;
 
@@ -215,6 +218,7 @@ async function hostServerRoom() {
     els.roomInput.value = payload.room;
     setConnection("Room ready");
     startStatePolling(payload.room);
+    startPresence(payload.room);
     render();
   } catch (error) {
     setConnection("Local relay unavailable");
@@ -238,8 +242,10 @@ async function joinServerRoom() {
     if (!response.ok) throw new Error("Room not found");
     const payload = await response.json();
     state = payload.state;
+    presence = payload.presence || {};
     setConnection("Connected");
     startStatePolling(room);
+    startPresence(room);
     render();
   } catch (error) {
     setConnection("Room not found");
@@ -251,12 +257,36 @@ async function joinServerRoom() {
 }
 
 function setConnection(text) {
-  els.connectionStatus.textContent = text;
+  connectionText = text;
+  renderConnection();
+}
+
+function renderConnection() {
+  els.connectionStatus.textContent = `${connectionText}${partnerPresenceText()}`;
+}
+
+function partnerPresenceText() {
+  if (syncMode !== "server" || !role || !mySeat) return "";
+  const seat = mySeat === "south" ? "north" : "south";
+  const partner = presence[seat];
+  if (partner?.online) return ` • ${seatNames[seat]} online`;
+  if (typeof partner?.lastSeenAgoMs === "number") return ` • ${seatNames[seat]} last seen ${formatAgo(partner.lastSeenAgoMs)}`;
+  return ` • waiting for ${seatNames[seat]}`;
+}
+
+function formatAgo(ms) {
+  const seconds = Math.max(1, Math.round(ms / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.round(seconds / 60);
+  return `${minutes}m ago`;
 }
 
 function clearRoomCode() {
   clearInterval(pollTimer);
+  clearInterval(presenceTimer);
   pollTimer = null;
+  presenceTimer = null;
+  presence = {};
   peerConn?.close();
   peer?.destroy();
   peerConn = null;
@@ -321,11 +351,35 @@ function startStatePolling(room) {
       if (!response.ok) return;
       const payload = await response.json();
       state = payload.state;
+      presence = payload.presence || presence;
       render();
     } catch (error) {
       setConnection("Relay polling failed");
     }
   }, 650);
+}
+
+function startPresence(room) {
+  clearInterval(presenceTimer);
+  sendPresence(room);
+  presenceTimer = setInterval(() => sendPresence(room), 5000);
+}
+
+async function sendPresence(room) {
+  if (!room || syncMode !== "server" || !mySeat) return;
+  try {
+    const response = await fetch(`/api/rooms/${encodeURIComponent(room)}/presence`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ seat: mySeat }),
+    });
+    if (!response.ok) return;
+    const payload = await response.json();
+    presence = payload.presence || presence;
+    renderConnection();
+  } catch (error) {
+    setConnection("Relay presence failed");
+  }
 }
 
 function draftCard(seat, choice) {
@@ -449,6 +503,7 @@ function render() {
   els.joinBtn.disabled = Boolean(role);
   els.copyBtn.disabled = !els.roomInput.value.trim();
   els.roomStatus.textContent = els.roomInput.value.trim().toUpperCase() || "-";
+  renderConnection();
   els.seatStatus.textContent = mySeat ? seatNames[mySeat] : "Choose Host or Join";
   els.southScore.textContent = state.scores.south;
   els.northScore.textContent = state.scores.north;
