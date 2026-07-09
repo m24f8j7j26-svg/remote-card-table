@@ -342,8 +342,8 @@ function takeFirstDiscard() {
   if (!isMyTurn() || state.turnStage !== "firstDiscard" || !state.discard[0]) return;
   const card = state.discard.shift();
   activeCards(mySeat).push(card);
-  state.turnStage = "play";
-  state.message = `${seatNames[mySeat]} took the first discard. Discard one card to finish the turn.`;
+  state.turnStage = "firstDiscardTaken";
+  state.message = `${seatNames[mySeat]} took the first discard. Discard one card, then draw normally.`;
   broadcast();
 }
 
@@ -403,11 +403,22 @@ function meldSelected(targetIndex = null) {
 }
 
 function discardSelected() {
-  if (!isMyTurn() || state.turnStage !== "play") return;
+  const returningFirstDiscard = state.turnStage === "firstDiscardTaken";
+  if (!isMyTurn() || (state.turnStage !== "play" && !returningFirstDiscard)) return;
   const cards = selectedCards();
   if (cards.length !== 1) {
     state.message = "Select exactly one card to discard.";
     render();
+    return;
+  }
+  if (returningFirstDiscard) {
+    const card = cards[0];
+    setActiveCards(mySeat, activeCards(mySeat).filter((item) => item.id !== card.id));
+    state.discard.unshift(card);
+    selected.clear();
+    state.turnStage = "draw";
+    state.message = `${seatNames[mySeat]} returned one card after taking the first discard. Draw normally.`;
+    broadcast();
     return;
   }
   if (!state.players[mySeat].opened && state.players[mySeat].melds.length > 0) {
@@ -672,6 +683,9 @@ function renderActions() {
     addAction("Take first discard", takeFirstDiscard);
     addAction("Skip first discard", skipFirstDiscard);
   }
+  if (isMyTurn() && state.turnStage === "firstDiscardTaken") {
+    addAction("Discard selected", discardSelected);
+  }
   if (isMyTurn() && state.turnStage === "draw") {
     addAction("Draw stock", takeStock);
     const check = canTakeDiscard(mySeat);
@@ -685,6 +699,7 @@ function renderActions() {
 
 function turnStageLabel() {
   if (state.turnStage === "firstDiscard") return "first discard";
+  if (state.turnStage === "firstDiscardTaken") return "return discard";
   return state.turnStage;
 }
 
