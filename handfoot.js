@@ -117,12 +117,36 @@ function makeRoomCode(prefix) {
   return `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
+function peerOptions() {
+  return {
+    host: "0.peerjs.com",
+    port: 443,
+    path: "/",
+    secure: true,
+    config: {
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:global.stun.twilio.com:3478" },
+      ],
+    },
+  };
+}
+
+function peerErrorText(error) {
+  const type = error?.type || "unknown";
+  if (type === "unavailable-id") return "Room collision. Clear code and host again.";
+  if (type === "peer-unavailable") return "Room not found. Check the code and make sure host stays open.";
+  if (type === "network") return "Peer network blocked. Try Wi-Fi, or use the hosted relay version.";
+  if (type === "server-error") return "Peer relay server error. Try again in a minute.";
+  return `Peer relay error: ${type}`;
+}
+
 function hostPeerRoom() {
   role = "host";
   mySeat = humanSeats.host;
   const code = makeRoomCode("CARDS");
   setConnection("Creating room...");
-  peer = new Peer(code);
+  peer = new Peer(code, peerOptions());
   peer.on("open", (id) => {
     els.roomInput.value = id.toUpperCase();
     setConnection("Room ready");
@@ -133,7 +157,7 @@ function hostPeerRoom() {
     wireHostPeerConnection(conn);
   });
   peer.on("error", (error) => {
-    setConnection(error.type === "unavailable-id" ? "Room collision. Try Host again." : "Peer relay error");
+    setConnection(peerErrorText(error));
     role = null;
     mySeat = null;
     render();
@@ -220,13 +244,13 @@ function joinPeerRoom() {
   role = "guest";
   mySeat = humanSeats.guest;
   setConnection("Connecting...");
-  peer = new Peer();
+  peer = new Peer(undefined, peerOptions());
   peer.on("open", () => {
     peerConn = peer.connect(room, { reliable: true });
     wireGuestPeerConnection(peerConn);
   });
-  peer.on("error", () => {
-    setConnection("Peer relay error");
+  peer.on("error", (error) => {
+    setConnection(peerErrorText(error));
     role = null;
     mySeat = null;
     render();
