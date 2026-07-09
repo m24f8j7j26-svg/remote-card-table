@@ -38,6 +38,7 @@ let pollTimer = null;
 let presenceTimer = null;
 let presence = {};
 let connectionText = "Not connected";
+let pollFailures = 0;
 let peer = null;
 let peerConn = null;
 
@@ -287,6 +288,7 @@ function clearRoomCode() {
   pollTimer = null;
   presenceTimer = null;
   presence = {};
+  pollFailures = 0;
   peerConn?.close();
   peer?.destroy();
   peerConn = null;
@@ -350,11 +352,14 @@ function startStatePolling(room) {
       const response = await fetch(`/api/rooms/${encodeURIComponent(room)}/state`);
       if (!response.ok) return;
       const payload = await response.json();
+      pollFailures = 0;
       state = payload.state;
       presence = payload.presence || presence;
+      if (syncMode === "server" && role) connectionText = role === "host" ? "Room ready" : "Connected";
       render();
     } catch (error) {
-      setConnection("Relay polling failed");
+      pollFailures += 1;
+      if (pollFailures >= 3) setConnection("Relay reconnecting");
     }
   }, 650);
 }
@@ -375,10 +380,13 @@ async function sendPresence(room) {
     });
     if (!response.ok) return;
     const payload = await response.json();
+    pollFailures = 0;
     presence = payload.presence || presence;
+    if (syncMode === "server" && role && connectionText === "Relay reconnecting") connectionText = role === "host" ? "Room ready" : "Connected";
     renderConnection();
   } catch (error) {
-    setConnection("Relay presence failed");
+    pollFailures += 1;
+    if (pollFailures >= 3) setConnection("Relay reconnecting");
   }
 }
 
