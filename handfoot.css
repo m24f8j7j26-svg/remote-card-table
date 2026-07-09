@@ -38,6 +38,18 @@
   padding: 1rem;
 }
 
+.hf-table .message {
+  width: min(90%, 560px);
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+  background: rgba(13, 18, 15, 0.88);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+  color: #fff7df;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
 .hf-piles {
   display: flex;
   gap: 0.75rem;

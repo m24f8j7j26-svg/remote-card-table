@@ -83,9 +83,9 @@ function createGame(previous = null) {
     discard: [deck.shift()],
     players,
     currentTurn: "south",
-    turnStage: "draw",
+    turnStage: "firstDiscard",
     wentOut: null,
-    message: "South starts. Draw from stock or pick up the discard pile.",
+    message: "South may take the first discard card, or skip it and draw normally.",
   };
 }
 
@@ -264,6 +264,22 @@ function takeStock() {
   broadcast();
 }
 
+function takeFirstDiscard() {
+  if (!isMyTurn() || state.turnStage !== "firstDiscard" || !state.discard[0]) return;
+  const card = state.discard.shift();
+  activeCards(mySeat).push(card);
+  state.turnStage = "play";
+  state.message = `${seatNames[mySeat]} took the first discard. Discard one card to finish the turn.`;
+  broadcast();
+}
+
+function skipFirstDiscard() {
+  if (!isMyTurn() || state.turnStage !== "firstDiscard") return;
+  state.turnStage = "draw";
+  state.message = `${seatNames[mySeat]} skipped the first discard. Draw from stock or pick up the discard pile.`;
+  broadcast();
+}
+
 function takeDiscard() {
   if (!isMyTurn() || state.turnStage !== "draw" || !canTakeDiscard(mySeat).ok) return;
   const count = Math.min(5, state.discard.length);
@@ -303,7 +319,11 @@ function meldSelected(targetIndex = null) {
   if (!player.opened && openingTotal(player.melds) >= rule().open) player.opened = true;
   selected.clear();
   maybeMoveToFoot(mySeat);
-  state.message = `${seatNames[mySeat]} melded ${cards.length} cards.`;
+  if (!player.opened) {
+    state.message = `${seatNames[mySeat]} melded ${cards.length} cards. Opening total is ${openingTotal(player.melds)}/${rule().open}; meld another set before discarding.`;
+  } else {
+    state.message = `${seatNames[mySeat]} melded ${cards.length} cards.`;
+  }
   maybeFinishAfterPlay(mySeat, false);
   broadcast();
 }
@@ -313,6 +333,11 @@ function discardSelected() {
   const cards = selectedCards();
   if (cards.length !== 1) {
     state.message = "Select exactly one card to discard.";
+    render();
+    return;
+  }
+  if (!state.players[mySeat].opened && state.players[mySeat].melds.length > 0) {
+    state.message = `Opening total is ${openingTotal(state.players[mySeat].melds)}/${rule().open}. Meld another set before discarding.`;
     render();
     return;
   }
@@ -395,9 +420,6 @@ function validateNewMeld(cards, player) {
   if (cards.length > 7) return { ok: false, reason: "A book tops out at 7 cards." };
   if (player.melds.some((meld) => meld.rank === rank)) return { ok: false, reason: "Add to your existing meld for that rank." };
   if (!dirtyRatioOk(cards)) return { ok: false, reason: "Naturals must outnumber wild cards." };
-  if (!player.opened && openingTotal([...player.melds, { rank, cards }]) < rule().open) {
-    return { ok: false, reason: `Opening meld needs ${rule().open} points.` };
-  }
   return { ok: true, rank };
 }
 
@@ -481,7 +503,7 @@ function render() {
   els.discardTop.className = state.discard[0] ? cardSuitClass(state.discard[0]) : "";
   els.discardCount.textContent = `${state.discard.length} cards`;
   els.gameMessage.textContent = state.message;
-  els.turnStatus.textContent = state.wentOut ? "Round complete" : `${seatNames[state.currentTurn]} ${state.turnStage}`;
+  els.turnStatus.textContent = state.wentOut ? "Round complete" : `${seatNames[state.currentTurn]} ${turnStageLabel()}`;
   els.handLabel.textContent = mySeat ? `Your ${state.players[mySeat].active}` : "Your cards";
   renderSeats();
   renderMelds("south", els.southMelds);
@@ -549,6 +571,10 @@ function renderHand() {
 function renderActions() {
   els.actionControls.innerHTML = "";
   if (!mySeat || state.wentOut) return;
+  if (isMyTurn() && state.turnStage === "firstDiscard") {
+    addAction("Take first discard", takeFirstDiscard);
+    addAction("Skip first discard", skipFirstDiscard);
+  }
   if (isMyTurn() && state.turnStage === "draw") {
     addAction("Draw stock", takeStock);
     const check = canTakeDiscard(mySeat);
@@ -558,6 +584,11 @@ function renderActions() {
     addAction("New meld", () => meldSelected(null));
     addAction("Discard selected", discardSelected);
   }
+}
+
+function turnStageLabel() {
+  if (state.turnStage === "firstDiscard") return "first discard";
+  return state.turnStage;
 }
 
 function addAction(label, fn, disabled = false) {
