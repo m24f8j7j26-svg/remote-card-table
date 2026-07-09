@@ -13,6 +13,7 @@ const roundRules = [
 const els = {
   hostBtn: document.querySelector("#hostBtn"),
   copyBtn: document.querySelector("#copyBtn"),
+  clearRoomBtn: document.querySelector("#clearRoomBtn"),
   joinBtn: document.querySelector("#joinBtn"),
   roomInput: document.querySelector("#roomInput"),
   connectionStatus: document.querySelector("#connectionStatus"),
@@ -260,6 +261,22 @@ async function broadcast() {
 
 function setConnection(text) {
   els.connectionStatus.textContent = text;
+}
+
+function clearRoomCode() {
+  clearInterval(pollTimer);
+  pollTimer = null;
+  peerConn?.close();
+  peer?.destroy();
+  peerConn = null;
+  peer = null;
+  role = null;
+  mySeat = null;
+  selected.clear();
+  els.roomInput.value = "";
+  state = createGame();
+  setConnection(syncMode === "server" ? "Remote relay ready" : "Browser relay ready");
+  render();
 }
 
 function takeStock() {
@@ -633,6 +650,7 @@ function cardMarkup(card) {
 
 els.hostBtn.addEventListener("click", hostRoom);
 els.joinBtn.addEventListener("click", joinRoom);
+els.clearRoomBtn.addEventListener("click", clearRoomCode);
 els.stockBtn.addEventListener("click", takeStock);
 els.discardBtn.addEventListener("click", takeDiscard);
 els.newRoundBtn.addEventListener("click", () => {

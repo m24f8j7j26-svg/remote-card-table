@@ -8,6 +8,7 @@ const humanSeats = { host: "south", guest: "north" };
 const els = {
   hostBtn: document.querySelector("#hostBtn"),
   copyBtn: document.querySelector("#copyBtn"),
+  clearRoomBtn: document.querySelector("#clearRoomBtn"),
   joinBtn: document.querySelector("#joinBtn"),
   roomInput: document.querySelector("#roomInput"),
   connectionStatus: document.querySelector("#connectionStatus"),
@@ -227,6 +228,21 @@ async function joinServerRoom() {
 
 function setConnection(text) {
   els.connectionStatus.textContent = text;
+}
+
+function clearRoomCode() {
+  clearInterval(pollTimer);
+  pollTimer = null;
+  peerConn?.close();
+  peer?.destroy();
+  peerConn = null;
+  peer = null;
+  role = null;
+  mySeat = null;
+  els.roomInput.value = "";
+  state = createGame();
+  setConnection(syncMode === "server" ? "Remote relay ready" : "Browser relay ready");
+  render();
 }
 
 function submitAction(action) {
@@ -524,6 +540,7 @@ function cardMarkup(card) {
 
 els.hostBtn.addEventListener("click", hostRoom);
 els.joinBtn.addEventListener("click", joinRoom);
+els.clearRoomBtn.addEventListener("click", clearRoomCode);
 els.copyBtn.addEventListener("click", async () => {
   const code = els.roomInput.value.trim().toUpperCase();
   if (!code) return;
