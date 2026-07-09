@@ -97,15 +97,17 @@
 }
 
 .discard-mini {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.08rem;
-  min-width: 2.05rem;
-  min-height: 1.9rem;
+  min-width: 2.35rem;
+  min-height: 3.05rem;
   border: 1px solid rgba(0, 0, 0, 0.18);
   border-radius: 0.35rem;
-  background: #fffaf0;
+  background:
+    linear-gradient(145deg, #ffffff 0%, #fffaf0 72%, #f1eadc 100%);
   color: var(--card-ink);
   font-size: 0.78rem;
   font-weight: 900;
@@ -120,9 +122,20 @@
 }
 
 .discard-mini .suit {
-  width: 1.35em;
-  height: 1.35em;
-  border-width: 1px;
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: currentColor;
+  font-size: 1.45rem;
+}
+
+.discard-mini .rank {
+  position: absolute;
+  left: 0.22rem;
+  top: 0.18rem;
+  font-size: 0.72rem;
 }
 
 .discard-mini.top {

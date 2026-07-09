@@ -574,7 +574,7 @@ function render() {
   els.roundStatus.textContent = `${state.round} · draw ${rule().draw}`;
   els.stockCount.textContent = state.stock.length;
   els.discardTop.innerHTML = state.discard[0] ? cardMarkup(state.discard[0]) : "-";
-  els.discardTop.className = state.discard[0] ? cardSuitClass(state.discard[0]) : "";
+  els.discardTop.className = state.discard[0] ? cardSuitClass(state.discard[0]) : "empty-discard";
   renderDiscardPreview();
   els.discardCount.textContent = `${state.discard.length} cards`;
   els.gameMessage.textContent = state.message;

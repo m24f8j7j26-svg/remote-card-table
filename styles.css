@@ -375,6 +375,72 @@ input {
   box-shadow: 0 0 0 3px rgba(240, 196, 107, 0.34);
 }
 
+.card,
+.played-card,
+.draft-card {
+  position: relative;
+  background:
+    linear-gradient(145deg, #ffffff 0%, #fffaf0 72%, #f1eadc 100%);
+  border: 1px solid rgba(25, 25, 25, 0.22);
+  border-radius: 0.42rem;
+}
+
+.card .rank,
+.played-card .rank,
+.draft-card .rank,
+#discardTop .rank {
+  position: absolute;
+  left: 0.42rem;
+  top: 0.38rem;
+  font-size: 1.02rem;
+  line-height: 1;
+}
+
+.card .suit,
+.played-card .suit,
+.draft-card .suit,
+#discardTop .suit {
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: currentColor;
+  font-size: 2.3rem;
+  line-height: 1;
+}
+
+.played-card .suit,
+.draft-card .suit {
+  font-size: 2.05rem;
+}
+
+#discardTop {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.2rem;
+  min-height: 5.35rem;
+  border: 1px solid rgba(25, 25, 25, 0.22);
+  border-radius: 0.42rem;
+  background:
+    linear-gradient(145deg, #ffffff 0%, #fffaf0 72%, #f1eadc 100%);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14);
+}
+
+#discardTop.empty-discard {
+  width: auto;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+#discardTop .suit {
+  font-size: 2rem;
+}
+
 .guide {
   margin-top: 1rem;
   padding: 1rem;
