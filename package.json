@@ -1,0 +1,13 @@
+{
+  "name": "remote-card-table",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hosted two-player Spades and Hand & Foot table.",
+  "main": "hosted-server.js",
+  "scripts": {
+    "start": "node hosted-server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

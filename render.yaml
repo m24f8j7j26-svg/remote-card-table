@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: remote-card-table
+    env: node
+    plan: free
+    buildCommand: ""
+    startCommand: "npm start"
+    autoDeploy: true

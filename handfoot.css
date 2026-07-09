@@ -1,0 +1,132 @@
+.nav-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  border-radius: 0.45rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--ink);
+  font-weight: 800;
+  padding: 0 1rem;
+  text-decoration: none;
+}
+
+.hf-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(300px, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.hf-side,
+.hf-table,
+.hf-melds {
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: rgba(13, 18, 15, 0.7);
+}
+
+.hf-side {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.hf-table {
+  position: relative;
+  min-height: 240px;
+  padding: 1rem;
+}
+
+.hf-piles {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pile {
+  display: grid;
+  place-items: center;
+  gap: 0.2rem;
+  width: 8rem;
+  min-height: 8.5rem;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--card-ink);
+}
+
+.pile small {
+  color: #5f594f;
+  font-weight: 800;
+}
+
+.hf-melds {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.hf-melds h2 {
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+}
+
+.meld-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.45rem;
+}
+
+.meld {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.55rem;
+}
+
+.meld button {
+  width: 100%;
+  min-height: 2rem;
+  margin-top: 0.4rem;
+}
+
+.meld-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-weight: 900;
+}
+
+.meld-meta {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin-top: 0.2rem;
+}
+
+.hf-hand {
+  grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+}
+
+.card.selected {
+  outline: 4px solid var(--blue);
+}
+
+.card.wild .suit {
+  border-radius: 999px;
+  background: #201912;
+  color: var(--gold);
+}
+
+.card.red-three {
+  background: #ffe9e4;
+}
+
+@media (max-width: 780px) {
+  .hf-layout,
+  .hf-melds {
+    grid-template-columns: 1fr;
+  }
+}

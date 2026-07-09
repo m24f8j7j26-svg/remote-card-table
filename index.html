@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Remote Spades Table</title>
+    <link rel="preconnect" href="https://unpkg.com" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="topbar" aria-label="Game controls">
+        <div>
+          <p class="eyebrow">Remote Card Table</p>
+          <h1>Two-player table</h1>
+        </div>
+        <div class="room-panel">
+          <a class="nav-button" href="handfoot.html">Hand & Foot</a>
+          <button id="hostBtn" type="button">Host room</button>
+          <button id="copyBtn" type="button" disabled>Copy code</button>
+          <label class="join-field">
+            <span>Room code</span>
+            <input id="roomInput" type="text" autocomplete="off" spellcheck="false" placeholder="SPADES-1234" />
+          </label>
+          <button id="joinBtn" type="button">Join</button>
+        </div>
+      </section>
+
+      <section class="status-strip" aria-live="polite">
+        <div>
+          <span class="label">Connection</span>
+          <strong id="connectionStatus">Not connected</strong>
+        </div>
+        <div>
+          <span class="label">You are</span>
+          <strong id="seatStatus">Choose Host or Join</strong>
+        </div>
+        <div>
+          <span class="label">Room</span>
+          <strong id="roomStatus">-</strong>
+        </div>
+      </section>
+
+      <section class="scoreboard" aria-label="Scoreboard">
+        <div>
+          <span>South</span>
+          <strong id="southScore">0</strong>
+        </div>
+        <div>
+          <span>North</span>
+          <strong id="northScore">0</strong>
+        </div>
+        <div>
+          <span>Hand</span>
+          <strong id="handNumber">1</strong>
+        </div>
+      </section>
+
+      <section class="table-shell">
+        <div class="player seat-north" id="seatNorth"></div>
+        <div class="player seat-south" id="seatSouth"></div>
+
+        <div class="table">
+          <div class="trick-area" id="trickArea"></div>
+          <div class="message" id="gameMessage">Host a room, then share the room code with your partner.</div>
+        </div>
+      </section>
+
+      <section class="action-bar">
+        <div class="bid-controls" id="bidControls" aria-label="Game controls"></div>
+        <button id="newHandBtn" type="button">New hand</button>
+      </section>
+
+      <section class="hand-panel" aria-label="Your hand">
+        <div class="hand-header">
+          <span>Your hand</span>
+          <strong id="turnStatus">Waiting</strong>
+        </div>
+        <div class="hand" id="hand"></div>
+      </section>
+
+      <section class="guide">
+        <h2>How the process works</h2>
+        <ol>
+          <li>One player clicks Host room and shares the room code by text, phone, or video chat.</li>
+          <li>The other player opens this same page, enters the code, and clicks Join.</li>
+          <li>South and North draft from the deck two cards at a time until each player has 13 cards.</li>
+          <li>On your draft turn, keep the first card and discard the next, or discard the first and keep the next.</li>
+          <li>Bid, play legal cards, and keep talking while the shared table updates for both players.</li>
+          <li>Extra tricks are bags. Every 5 bags costs 50 points, with leftover bags carrying forward.</li>
+        </ol>
+      </section>
+    </main>
+
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

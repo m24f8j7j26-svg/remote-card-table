@@ -1,0 +1,10 @@
+.DS_Store
+node_modules/
+npm-debug.log*
+
+# Generated local packaging artifacts
+build/
+dist/
+
+# Local hosting overrides
+*.local

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Remote Hand and Foot</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="handfoot.css" />
+  </head>
+  <body>
+    <main class="app handfoot-app">
+      <section class="topbar" aria-label="Game controls">
+        <div>
+          <p class="eyebrow">Remote Card Table</p>
+          <h1>Hand & Foot</h1>
+        </div>
+        <div class="room-panel">
+          <a class="nav-button" href="index.html">Spades</a>
+          <button id="hostBtn" type="button">Host room</button>
+          <button id="copyBtn" type="button" disabled>Copy code</button>
+          <label class="join-field">
+            <span>Room code</span>
+            <input id="roomInput" type="text" autocomplete="off" spellcheck="false" placeholder="CARDS-1234" />
+          </label>
+          <button id="joinBtn" type="button">Join</button>
+        </div>
+      </section>
+
+      <section class="status-strip" aria-live="polite">
+        <div>
+          <span class="label">Connection</span>
+          <strong id="connectionStatus">Not connected</strong>
+        </div>
+        <div>
+          <span class="label">You are</span>
+          <strong id="seatStatus">Choose Host or Join</strong>
+        </div>
+        <div>
+          <span class="label">Room</span>
+          <strong id="roomStatus">-</strong>
+        </div>
+      </section>
+
+      <section class="scoreboard" aria-label="Scoreboard">
+        <div>
+          <span>South</span>
+          <strong id="southScore">0</strong>
+        </div>
+        <div>
+          <span>North</span>
+          <strong id="northScore">0</strong>
+        </div>
+        <div>
+          <span>Round</span>
+          <strong id="roundStatus">1</strong>
+        </div>
+      </section>
+
+      <section class="hf-layout">
+        <aside class="hf-side">
+          <div class="player active-seat" id="seatNorth"></div>
+          <div class="player" id="seatSouth"></div>
+        </aside>
+
+        <section class="hf-table">
+          <div class="hf-piles">
+            <button class="pile" id="stockBtn" type="button">
+              <span class="label">Stock</span>
+              <strong id="stockCount">0</strong>
+            </button>
+            <button class="pile" id="discardBtn" type="button">
+              <span class="label">Discard</span>
+              <strong id="discardTop">-</strong>
+              <small id="discardCount">0 cards</small>
+            </button>
+          </div>
+          <div class="message" id="gameMessage">Host a room, then share the room code with your partner.</div>
+        </section>
+
+        <section class="hf-melds">
+          <div>
+            <h2>South Melds</h2>
+            <div id="southMelds" class="meld-grid"></div>
+          </div>
+          <div>
+            <h2>North Melds</h2>
+            <div id="northMelds" class="meld-grid"></div>
+          </div>
+        </section>
+      </section>
+
+      <section class="action-bar">
+        <div class="bid-controls" id="actionControls" aria-label="Game controls"></div>
+        <button id="newRoundBtn" type="button">New round</button>
+      </section>
+
+      <section class="hand-panel" aria-label="Your active cards">
+        <div class="hand-header">
+          <span id="handLabel">Your hand</span>
+          <strong id="turnStatus">Waiting</strong>
+        </div>
+        <div class="hand hf-hand" id="hand"></div>
+      </section>
+
+      <section class="guide">
+        <h2>House rules in this table</h2>
+        <ol>
+          <li>Four decks, two players, 11 cards in Hand and 11 in Foot.</li>
+          <li>Rounds draw 2, 3, 4, then 5 cards; opening melds are 50, 90, 120, then 150.</li>
+          <li>Going out requires 2/3/4/5 clean books and the same number of dirty books.</li>
+          <li>Round 4 requires playing every final card; no discard to go out.</li>
+          <li>Seven black 3s make a 1000-point book. Red 3s left when the opponent goes out are -500 each.</li>
+        </ol>
+      </section>
+    </main>
+    <script src="handfoot.js"></script>
+  </body>
+</html>
