@@ -20,6 +20,7 @@ const els = {
   gameMessage: document.querySelector("#gameMessage"),
   actionControls: document.querySelector("#bidControls"),
   newHandBtn: document.querySelector("#newHandBtn"),
+  newGameBtn: document.querySelector("#newGameBtn"),
   hand: document.querySelector("#hand"),
   turnStatus: document.querySelector("#turnStatus"),
   seats: {
@@ -235,6 +236,9 @@ function applyAction(action) {
   if (action.kind === "play") playCard(action.seat, action.cardId);
   if (action.kind === "newHand") {
     state = createGame(state);
+  }
+  if (action.kind === "newGame") {
+    state = createGame();
   }
   broadcastState();
 }
@@ -523,6 +527,7 @@ els.copyBtn.addEventListener("click", async () => {
   }, 1200);
 });
 els.newHandBtn.addEventListener("click", () => submitAction({ kind: "newHand" }));
+els.newGameBtn.addEventListener("click", () => submitAction({ kind: "newGame" }));
 els.roomInput.addEventListener("input", () => {
   els.roomInput.value = els.roomInput.value.toUpperCase();
   render();

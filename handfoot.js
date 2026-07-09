@@ -31,6 +31,7 @@ const els = {
   gameMessage: document.querySelector("#gameMessage"),
   actionControls: document.querySelector("#actionControls"),
   newRoundBtn: document.querySelector("#newRoundBtn"),
+  newGameBtn: document.querySelector("#newGameBtn"),
   handLabel: document.querySelector("#handLabel"),
   turnStatus: document.querySelector("#turnStatus"),
   hand: document.querySelector("#hand"),
@@ -598,6 +599,11 @@ els.stockBtn.addEventListener("click", takeStock);
 els.discardBtn.addEventListener("click", takeDiscard);
 els.newRoundBtn.addEventListener("click", () => {
   state = createGame(state);
+  selected.clear();
+  broadcast();
+});
+els.newGameBtn.addEventListener("click", () => {
+  state = createGame();
   selected.clear();
   broadcast();
 });
