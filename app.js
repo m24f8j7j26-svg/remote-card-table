@@ -33,6 +33,8 @@ let mySeat = null;
 let state = createGame();
 let syncMode = "peer";
 let pollTimer = null;
+let peer = null;
+let peerConn = null;
 
 function createDeck() {
   return Object.keys(suitSymbols).flatMap((suit) =>
@@ -79,7 +81,7 @@ function hostRoom() {
     hostServerRoom();
     return;
   }
-  setConnection("Remote relay is not available.");
+  hostPeerRoom();
 }
 
 function joinRoom() {
@@ -87,7 +89,82 @@ function joinRoom() {
     joinServerRoom();
     return;
   }
-  setConnection("Remote relay is not available.");
+  joinPeerRoom();
+}
+
+function makeRoomCode(prefix) {
+  return `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
+function hostPeerRoom() {
+  role = "host";
+  mySeat = humanSeats.host;
+  const code = makeRoomCode("SPADES");
+  setConnection("Creating room...");
+  peer = new Peer(code);
+  peer.on("open", (id) => {
+    els.roomInput.value = id.toUpperCase();
+    setConnection("Room ready");
+    render();
+  });
+  peer.on("connection", (conn) => {
+    peerConn = conn;
+    wireHostPeerConnection(conn);
+  });
+  peer.on("error", (error) => {
+    setConnection(error.type === "unavailable-id" ? "Room collision. Try Host again." : "Peer relay error");
+    role = null;
+    mySeat = null;
+    render();
+  });
+}
+
+function joinPeerRoom() {
+  const room = els.roomInput.value.trim().toUpperCase();
+  if (!room) {
+    setConnection("Enter a room code");
+    return;
+  }
+  role = "guest";
+  mySeat = humanSeats.guest;
+  setConnection("Connecting...");
+  peer = new Peer();
+  peer.on("open", () => {
+    peerConn = peer.connect(room, { reliable: true });
+    wireGuestPeerConnection(peerConn);
+  });
+  peer.on("error", () => {
+    setConnection("Peer relay error");
+    role = null;
+    mySeat = null;
+    render();
+  });
+  render();
+}
+
+function wireHostPeerConnection(conn) {
+  conn.on("open", () => {
+    setConnection("Connected");
+    conn.send({ type: "state", state });
+  });
+  conn.on("data", (message) => {
+    if (message.type === "action") applyAction(message.action);
+  });
+  conn.on("close", () => setConnection("Partner disconnected"));
+}
+
+function wireGuestPeerConnection(conn) {
+  conn.on("open", () => {
+    setConnection("Connected");
+    render();
+  });
+  conn.on("data", (message) => {
+    if (message.type === "state") {
+      state = message.state;
+      render();
+    }
+  });
+  conn.on("close", () => setConnection("Host disconnected"));
 }
 
 async function hostServerRoom() {
@@ -145,6 +222,10 @@ function setConnection(text) {
 }
 
 function submitAction(action) {
+  if (syncMode === "peer" && role === "guest" && peerConn?.open) {
+    peerConn.send({ type: "action", action });
+    return;
+  }
   applyAction(action);
 }
 
@@ -159,6 +240,9 @@ function applyAction(action) {
 }
 
 function broadcastState() {
+  if (syncMode === "peer" && role === "host" && peerConn?.open) {
+    peerConn.send({ type: "state", state });
+  }
   if (role && syncMode === "server") {
     putServerState();
   }

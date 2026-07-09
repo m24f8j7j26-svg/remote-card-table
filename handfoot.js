@@ -44,6 +44,8 @@ let syncMode = "peer";
 let pollTimer = null;
 let selected = new Set();
 let state = createGame();
+let peer = null;
+let peerConn = null;
 
 function createDeck() {
   const ranks = ["A", "K", "Q", "J", "T", "9", "8", "7", "6", "5", "4", "3", "2"];
@@ -100,10 +102,69 @@ function setActiveCards(seat, cards) {
 }
 
 function hostRoom() {
-  if (syncMode !== "server") return setConnection("Remote relay is not available.");
+  if (syncMode !== "server") {
+    hostPeerRoom();
+    return;
+  }
   role = "host";
   mySeat = humanSeats.host;
   createRoom();
+}
+
+function makeRoomCode(prefix) {
+  return `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
+function hostPeerRoom() {
+  role = "host";
+  mySeat = humanSeats.host;
+  const code = makeRoomCode("CARDS");
+  setConnection("Creating room...");
+  peer = new Peer(code);
+  peer.on("open", (id) => {
+    els.roomInput.value = id.toUpperCase();
+    setConnection("Room ready");
+    render();
+  });
+  peer.on("connection", (conn) => {
+    peerConn = conn;
+    wireHostPeerConnection(conn);
+  });
+  peer.on("error", (error) => {
+    setConnection(error.type === "unavailable-id" ? "Room collision. Try Host again." : "Peer relay error");
+    role = null;
+    mySeat = null;
+    render();
+  });
+}
+
+function wireHostPeerConnection(conn) {
+  conn.on("open", () => {
+    setConnection("Connected");
+    conn.send({ type: "state", state });
+  });
+  conn.on("data", (message) => {
+    if (message.type === "state") {
+      state = message.state;
+      render();
+      if (peerConn?.open) peerConn.send({ type: "state", state });
+    }
+  });
+  conn.on("close", () => setConnection("Partner disconnected"));
+}
+
+function wireGuestPeerConnection(conn) {
+  conn.on("open", () => {
+    setConnection("Connected");
+    render();
+  });
+  conn.on("data", (message) => {
+    if (message.type === "state") {
+      state = message.state;
+      render();
+    }
+  });
+  conn.on("close", () => setConnection("Host disconnected"));
 }
 
 async function createRoom() {
@@ -121,7 +182,10 @@ async function createRoom() {
 }
 
 async function joinRoom() {
-  if (syncMode !== "server") return setConnection("Remote relay is not available.");
+  if (syncMode !== "server") {
+    joinPeerRoom();
+    return;
+  }
   const room = els.roomInput.value.trim().toUpperCase();
   if (!room) return setConnection("Enter a room code");
   role = "guest";
@@ -141,6 +205,26 @@ async function joinRoom() {
   render();
 }
 
+function joinPeerRoom() {
+  const room = els.roomInput.value.trim().toUpperCase();
+  if (!room) return setConnection("Enter a room code");
+  role = "guest";
+  mySeat = humanSeats.guest;
+  setConnection("Connecting...");
+  peer = new Peer();
+  peer.on("open", () => {
+    peerConn = peer.connect(room, { reliable: true });
+    wireGuestPeerConnection(peerConn);
+  });
+  peer.on("error", () => {
+    setConnection("Peer relay error");
+    role = null;
+    mySeat = null;
+    render();
+  });
+  render();
+}
+
 function startPolling(room) {
   clearInterval(pollTimer);
   pollTimer = setInterval(async () => {
@@ -153,6 +237,10 @@ function startPolling(room) {
 
 async function broadcast() {
   render();
+  if (syncMode === "peer" && peerConn?.open) {
+    peerConn.send({ type: "state", state });
+    return;
+  }
   const room = els.roomInput.value.trim().toUpperCase();
   if (!room || syncMode !== "server" || !role) return;
   await fetch(`/api/rooms/${encodeURIComponent(room)}/state`, {
