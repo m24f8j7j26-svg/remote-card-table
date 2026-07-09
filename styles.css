@@ -321,8 +321,17 @@ input {
 
 .card.red,
 .played-card.red,
-.draft-card.red {
+.draft-card.red,
+#discardTop.red {
   color: var(--red);
+}
+
+#discardTop.black {
+  color: var(--card-ink);
+}
+
+#discardTop.suit-c {
+  color: #145f45;
 }
 
 .rank {
