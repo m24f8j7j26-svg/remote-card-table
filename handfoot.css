@@ -71,8 +71,8 @@
   display: grid;
   place-items: center;
   gap: 0.2rem;
-  width: 8rem;
-  min-height: 8.5rem;
+  width: 13.5rem;
+  min-height: 9.2rem;
   border: 1px solid var(--line);
   background: var(--card);
   color: var(--card-ink);
@@ -81,6 +81,47 @@
 .pile small {
   color: #5f594f;
   font-weight: 800;
+}
+
+.discard-preview {
+  display: flex;
+  justify-content: center;
+  gap: 0.22rem;
+  width: 100%;
+  min-height: 2rem;
+}
+
+.discard-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.08rem;
+  min-width: 2.05rem;
+  min-height: 1.9rem;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 0.35rem;
+  background: #fffaf0;
+  color: var(--card-ink);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.discard-mini.red {
+  color: var(--red);
+}
+
+.discard-mini.suit-c {
+  color: #145f45;
+}
+
+.discard-mini .suit {
+  width: 1.35em;
+  height: 1.35em;
+  border-width: 1px;
+}
+
+.discard-mini.top {
+  box-shadow: 0 0 0 2px rgba(240, 196, 107, 0.55);
 }
 
 .hf-melds {

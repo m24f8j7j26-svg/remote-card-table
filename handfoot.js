@@ -28,6 +28,7 @@ const els = {
   discardBtn: document.querySelector("#discardBtn"),
   stockCount: document.querySelector("#stockCount"),
   discardTop: document.querySelector("#discardTop"),
+  discardPreview: document.querySelector("#discardPreview"),
   discardCount: document.querySelector("#discardCount"),
   gameMessage: document.querySelector("#gameMessage"),
   actionControls: document.querySelector("#actionControls"),
@@ -549,6 +550,7 @@ function render() {
   els.stockCount.textContent = state.stock.length;
   els.discardTop.innerHTML = state.discard[0] ? cardMarkup(state.discard[0]) : "-";
   els.discardTop.className = state.discard[0] ? cardSuitClass(state.discard[0]) : "";
+  renderDiscardPreview();
   els.discardCount.textContent = `${state.discard.length} cards`;
   els.gameMessage.textContent = state.message;
   els.turnStatus.textContent = state.wentOut ? "Round complete" : `${seatNames[state.currentTurn]} ${turnStageLabel()}`;
@@ -574,6 +576,16 @@ function renderSeats() {
       <div class="player-meta">Open ${player.opened ? "yes" : openingTotal(player.melds) + "/" + rule().open}</div>
       <div class="player-meta">Books ${clean}/${rule().books} clean · ${dirty}/${rule().books} dirty</div>
     `;
+  });
+}
+
+function renderDiscardPreview() {
+  els.discardPreview.innerHTML = "";
+  state.discard.slice(0, 5).forEach((card, index) => {
+    const item = document.createElement("span");
+    item.className = `discard-mini ${cardSuitClass(card)} ${index === 0 ? "top" : ""}`;
+    item.innerHTML = cardMarkup(card);
+    els.discardPreview.append(item);
   });
 }
 
