@@ -39,7 +39,12 @@
 }
 
 .hf-table .message {
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
   width: min(90%, 560px);
+  margin-top: 0.85rem;
   padding: 0.8rem 1rem;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 0.5rem;
