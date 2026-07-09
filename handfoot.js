@@ -621,8 +621,12 @@ fetch("/api/health", { cache: "no-store" })
     if (response.ok) {
       syncMode = "server";
       setConnection("Remote relay ready");
+    } else {
+      syncMode = "peer";
+      setConnection("Browser relay ready");
     }
   })
   .catch(() => {
     syncMode = "peer";
+    setConnection("Browser relay ready");
   });
