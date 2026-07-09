@@ -146,17 +146,20 @@ function joinPeerRoom() {
 function wireHostPeerConnection(conn) {
   conn.on("open", () => {
     setConnection("Connected");
-    conn.send({ type: "state", state });
+    sendPeerState(conn);
+    [300, 900, 1800].forEach((delay) => setTimeout(() => sendPeerState(conn), delay));
   });
   conn.on("data", (message) => {
+    if (message.type === "requestState") sendPeerState(conn);
     if (message.type === "action") applyAction(message.action);
   });
-  conn.on("close", () => setConnection("Partner disconnected"));
+  conn.on("close", () => setConnection("Partner disconnected. Keep this page open and have them rejoin."));
 }
 
 function wireGuestPeerConnection(conn) {
   conn.on("open", () => {
     setConnection("Connected");
+    conn.send({ type: "requestState" });
     render();
   });
   conn.on("data", (message) => {
@@ -165,7 +168,11 @@ function wireGuestPeerConnection(conn) {
       render();
     }
   });
-  conn.on("close", () => setConnection("Host disconnected"));
+  conn.on("close", () => setConnection("Host disconnected. Ask host to keep the room page open."));
+}
+
+function sendPeerState(conn = peerConn) {
+  if (conn?.open) conn.send({ type: "state", state });
 }
 
 async function hostServerRoom() {
@@ -245,7 +252,7 @@ function applyAction(action) {
 
 function broadcastState() {
   if (syncMode === "peer" && role === "host" && peerConn?.open) {
-    peerConn.send({ type: "state", state });
+    sendPeerState();
   }
   if (role && syncMode === "server") {
     putServerState();

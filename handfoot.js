@@ -142,21 +142,24 @@ function hostPeerRoom() {
 function wireHostPeerConnection(conn) {
   conn.on("open", () => {
     setConnection("Connected");
-    conn.send({ type: "state", state });
+    sendPeerState(conn);
+    [300, 900, 1800].forEach((delay) => setTimeout(() => sendPeerState(conn), delay));
   });
   conn.on("data", (message) => {
+    if (message.type === "requestState") sendPeerState(conn);
     if (message.type === "state") {
       state = message.state;
       render();
-      if (peerConn?.open) peerConn.send({ type: "state", state });
+      sendPeerState();
     }
   });
-  conn.on("close", () => setConnection("Partner disconnected"));
+  conn.on("close", () => setConnection("Partner disconnected. Keep this page open and have them rejoin."));
 }
 
 function wireGuestPeerConnection(conn) {
   conn.on("open", () => {
     setConnection("Connected");
+    conn.send({ type: "requestState" });
     render();
   });
   conn.on("data", (message) => {
@@ -165,7 +168,11 @@ function wireGuestPeerConnection(conn) {
       render();
     }
   });
-  conn.on("close", () => setConnection("Host disconnected"));
+  conn.on("close", () => setConnection("Host disconnected. Ask host to keep the room page open."));
+}
+
+function sendPeerState(conn = peerConn) {
+  if (conn?.open) conn.send({ type: "state", state });
 }
 
 async function createRoom() {
@@ -239,7 +246,7 @@ function startPolling(room) {
 async function broadcast() {
   render();
   if (syncMode === "peer" && peerConn?.open) {
-    peerConn.send({ type: "state", state });
+    sendPeerState();
     return;
   }
   const room = els.roomInput.value.trim().toUpperCase();
