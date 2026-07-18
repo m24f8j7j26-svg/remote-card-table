@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Remote Texas Hold'em</title>
+    <link rel="stylesheet" href="styles.css?v=20260718g" />
+    <link rel="stylesheet" href="texas.css?v=20260718a" />
+  </head>
+  <body>
+    <main class="app holdem-app">
+      <section class="topbar" aria-label="Game controls">
+        <div>
+          <p class="eyebrow">Remote Card Table</p>
+          <h1>Texas Hold'em</h1>
+          <p class="play-money-note">Play chips only. No deposits, cash value, buy-ins, or payouts.</p>
+        </div>
+        <div class="room-panel">
+          <a class="nav-button" href="index.html">Spades</a>
+          <a class="nav-button" href="handfoot.html">Hand & Foot</a>
+          <button id="hostBtn" type="button">Host room</button>
+          <button id="copyBtn" type="button" disabled>Copy code</button>
+          <button id="clearRoomBtn" type="button">Clear code</button>
+          <label class="join-field">
+            <span>Room code</span>
+            <input id="roomInput" type="text" autocomplete="off" spellcheck="false" placeholder="HOLD-1234" />
+          </label>
+          <button id="joinBtn" type="button">Join</button>
+        </div>
+      </section>
+
+      <section class="status-strip" aria-live="polite">
+        <div>
+          <span class="label">Connection</span>
+          <strong id="connectionStatus">Not connected</strong>
+        </div>
+        <div>
+          <span class="label">You are</span>
+          <strong id="seatStatus">Choose Host or Join</strong>
+        </div>
+        <div>
+          <span class="label">Room</span>
+          <strong id="roomStatus">-</strong>
+        </div>
+      </section>
+
+      <section class="scoreboard" aria-label="Play chip stacks">
+        <div>
+          <span>South stack</span>
+          <strong id="southStack">1000</strong>
+        </div>
+        <div>
+          <span>North stack</span>
+          <strong id="northStack">1000</strong>
+        </div>
+        <div>
+          <span>Pot</span>
+          <strong id="potStatus">0</strong>
+        </div>
+      </section>
+
+      <section class="holdem-layout">
+        <aside class="holdem-side" aria-label="Players">
+          <div class="player seat-north" id="seatNorth"></div>
+          <div class="player seat-south" id="seatSouth"></div>
+        </aside>
+
+        <section class="holdem-table" aria-label="Texas Hold'em table">
+          <div class="dealer-button" id="dealerButton">D</div>
+          <div class="community" id="communityCards"></div>
+          <div class="pot-display">
+            <span class="label">Current pot</span>
+            <strong id="mainPot">0</strong>
+          </div>
+          <div class="message holdem-message" id="gameMessage">Host a room, then share the room code with your partner.</div>
+          <div class="bid-controls holdem-actions" id="actionControls" aria-label="Betting controls"></div>
+        </section>
+
+        <section class="showdown-panel" id="showdownPanel" aria-label="Showdown"></section>
+      </section>
+
+      <section class="action-bar">
+        <div class="table-meta">
+          <span class="label">Hand</span>
+          <strong id="handNumber">1</strong>
+          <span class="label">Blinds</span>
+          <strong id="blindStatus">10 / 20</strong>
+        </div>
+        <div class="reset-actions">
+          <button id="newHandBtn" type="button">New hand</button>
+          <button id="newGameBtn" type="button">New game</button>
+        </div>
+      </section>
+
+      <section class="hand-panel" aria-label="Your hole cards">
+        <div class="hand-header">
+          <span>Your hole cards</span>
+          <strong id="turnStatus">Waiting</strong>
+        </div>
+        <div class="hand holdem-hand" id="hand"></div>
+      </section>
+
+      <section class="action-log" aria-label="Recent actions">
+        <div class="hand-header">
+          <span>Recent action</span>
+          <strong id="phaseStatus">Preflop</strong>
+        </div>
+        <ol id="actionLog"></ol>
+      </section>
+    </main>
+
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/pokersolver@2.1.4/pokersolver.js"></script>
+    <script src="texas.js?v=20260718a"></script>
+  </body>
+</html>

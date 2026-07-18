@@ -1,0 +1,417 @@
+.holdem-app {
+  --chip-red: #c74843;
+  --chip-blue: #4ca3dd;
+  --chip-black: #191b20;
+  --chip-green: #2eb67d;
+}
+
+.play-money-note {
+  max-width: 38rem;
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.holdem-layout {
+  display: grid;
+  grid-template-columns: 230px minmax(320px, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.holdem-side,
+.holdem-table,
+.showdown-panel,
+.action-log {
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: rgba(13, 18, 15, 0.7);
+}
+
+.holdem-side {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.holdem-side .player {
+  min-height: 150px;
+}
+
+.holdem-table {
+  position: relative;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 1rem;
+  min-height: 440px;
+  overflow: hidden;
+  padding: 1.25rem;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.1), transparent 34%),
+    radial-gradient(ellipse at center, #27825f 0%, #165039 70%);
+  box-shadow: inset 0 0 55px rgba(0, 0, 0, 0.34);
+}
+
+.holdem-table::before {
+  position: absolute;
+  inset: 1.25rem;
+  border: 10px solid #6d3c24;
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+
+.dealer-button {
+  position: absolute;
+  right: 1.6rem;
+  top: 1.35rem;
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 3px solid var(--chip-blue);
+  border-radius: 999px;
+  background: #fff7df;
+  color: #201912;
+  font-weight: 950;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.24);
+  transition: transform 0.2s ease;
+  z-index: 1;
+}
+
+.dealer-button.north {
+  transform: translateY(3.2rem);
+}
+
+.community {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(52px, 82px));
+  gap: 0.55rem;
+  justify-content: center;
+  width: min(100%, 520px);
+}
+
+.board-slot,
+.holdem-card,
+.mini-card,
+.card-back {
+  aspect-ratio: 0.72;
+  border-radius: 0.42rem;
+}
+
+.board-slot {
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(255, 255, 255, 0.34);
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.holdem-card,
+.mini-card,
+.card-back {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  border: 1px solid rgba(25, 25, 25, 0.22);
+  background:
+    linear-gradient(145deg, #ffffff 0%, #fffaf0 72%, #f1eadc 100%);
+  color: var(--card-ink);
+  font-weight: 950;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+}
+
+.holdem-card {
+  width: 100%;
+  min-height: 112px;
+}
+
+.mini-card {
+  width: 2.25rem;
+  min-height: 3.15rem;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.18);
+}
+
+.card-back {
+  width: 2.25rem;
+  min-height: 3.15rem;
+  border-color: rgba(255, 255, 255, 0.28);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.14) 25%, transparent 25%) 0 0 / 0.7rem 0.7rem,
+    linear-gradient(135deg, transparent 75%, rgba(255, 255, 255, 0.14) 75%) 0 0 / 0.7rem 0.7rem,
+    var(--chip-blue);
+  color: #fff;
+}
+
+.holdem-card.red,
+.mini-card.red {
+  color: var(--chip-red);
+}
+
+.holdem-card.suit-c,
+.mini-card.suit-c {
+  color: #145f45;
+}
+
+.holdem-card .rank,
+.mini-card .rank {
+  position: absolute;
+  left: 0.42rem;
+  top: 0.38rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.mini-card .rank {
+  left: 0.24rem;
+  top: 0.2rem;
+  font-size: 0.72rem;
+}
+
+.holdem-card .suit,
+.mini-card .suit {
+  color: currentColor;
+  font-size: 2.45rem;
+  line-height: 1;
+}
+
+.mini-card .suit {
+  font-size: 1.35rem;
+}
+
+.pot-display {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  gap: 0.15rem;
+  width: 8.2rem;
+  min-height: 5.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 0.5rem;
+  background:
+    radial-gradient(circle at 38% 45%, var(--chip-red) 0 16%, transparent 17%),
+    radial-gradient(circle at 56% 42%, var(--chip-blue) 0 14%, transparent 15%),
+    radial-gradient(circle at 48% 61%, var(--gold) 0 15%, transparent 16%),
+    rgba(10, 14, 12, 0.84);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25);
+}
+
+.pot-display strong {
+  color: #fff7df;
+  font-size: 1.35rem;
+}
+
+.holdem-message {
+  position: relative;
+  left: auto;
+  top: auto;
+  z-index: 1;
+  width: min(92%, 620px);
+  transform: none;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+  background: rgba(13, 18, 15, 0.88);
+  color: #fff7df;
+  line-height: 1.35;
+  pointer-events: auto;
+}
+
+.holdem-actions {
+  position: relative;
+  z-index: 1;
+  justify-content: center;
+}
+
+.holdem-actions button {
+  min-width: 6.4rem;
+}
+
+.bet-widget {
+  display: flex;
+  align-items: end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.bet-widget label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.bet-widget input {
+  width: 7.5rem;
+  text-transform: none;
+}
+
+.table-meta,
+.reset-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.seat-hole {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 3.15rem;
+}
+
+.chip-line,
+.bet-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.chip-dot {
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 2px solid rgba(255, 255, 255, 0.65);
+  border-radius: 999px;
+  background: var(--chip-red);
+}
+
+.chip-dot.blue {
+  background: var(--chip-blue);
+}
+
+.player.folded {
+  opacity: 0.62;
+}
+
+.player.all-in {
+  outline: 3px solid var(--chip-red);
+}
+
+.showdown-panel {
+  grid-column: 1 / -1;
+  display: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.showdown-panel.visible {
+  display: grid;
+}
+
+.showdown-item {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.7rem;
+}
+
+.showdown-item.winner {
+  border-color: rgba(240, 196, 107, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(240, 196, 107, 0.28);
+}
+
+.showdown-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-weight: 900;
+}
+
+.showdown-cards {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.showdown-hand {
+  margin-top: 0.45rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+
+.holdem-hand {
+  grid-template-columns: repeat(2, minmax(76px, 100px));
+  justify-content: start;
+}
+
+.holdem-hand .holdem-card {
+  min-height: 132px;
+}
+
+.action-log {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+}
+
+.action-log ol {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+@media (max-width: 780px) {
+  .holdem-layout,
+  .showdown-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .holdem-table {
+    min-height: 390px;
+    padding: 1rem;
+  }
+
+  .holdem-table::before {
+    inset: 0.75rem;
+    border-width: 7px;
+  }
+
+  .community {
+    grid-template-columns: repeat(5, minmax(44px, 1fr));
+    gap: 0.35rem;
+  }
+
+  .holdem-card {
+    min-height: 82px;
+  }
+
+  .holdem-card .suit {
+    font-size: 1.9rem;
+  }
+
+  .holdem-actions,
+  .bet-widget,
+  .bet-widget label,
+  .bet-widget input,
+  .holdem-actions button,
+  .reset-actions,
+  .reset-actions button {
+    width: 100%;
+  }
+
+  .holdem-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .table-meta {
+    justify-content: center;
+  }
+
+  .holdem-hand {
+    grid-template-columns: repeat(2, minmax(68px, 92px));
+  }
+}

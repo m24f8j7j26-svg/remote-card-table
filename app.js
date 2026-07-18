@@ -73,6 +73,7 @@ function createGame(previous = null) {
     trick: [],
     spadesBroken: false,
     lastDraft: null,
+    lastTrick: null,
     message: "South drafts first. Look at the card, then keep it or discard it.",
   };
 }
@@ -443,10 +444,13 @@ function playCard(seat, cardId) {
 }
 
 function finishTrick() {
-  const winner = trickWinner(state.trick);
+  const plays = state.trick.map((play) => ({ seat: play.seat, card: play.card }));
+  const winning = winningPlay(plays);
+  const winner = winning.seat;
+  state.lastTrick = { plays, winner, winningCard: winning.card };
   state.taken[winner] += 1;
   state.currentTurn = winner;
-  state.message = `${seatNames[winner]} takes the trick.`;
+  state.message = `${seatNames[winner]} takes the trick with ${cardLabel(winning.card)}. ${trickSummary(plays)}.`;
   state.trick = [];
   if (seats.every((seat) => state.hands[seat].length === 0)) finishHand();
 }
@@ -473,6 +477,10 @@ function scorePlayer(bid, taken, currentBags) {
 }
 
 function trickWinner(trick) {
+  return winningPlay(trick).seat;
+}
+
+function winningPlay(trick) {
   const leadSuit = trick[0].card.suit;
   return trick.reduce((best, play) => {
     const card = play.card;
@@ -483,7 +491,11 @@ function trickWinner(trick) {
     if (card.suit === bestCard.suit && rankOrder[card.rank] > rankOrder[bestCard.rank]) return play;
     if (!bestIsSpade && card.suit === leadSuit && bestCard.suit !== leadSuit) return play;
     return best;
-  }, trick[0]).seat;
+  }, trick[0]);
+}
+
+function trickSummary(plays) {
+  return plays.map((play) => `${seatNames[play.seat]} played ${cardLabel(play.card)}`).join("; ");
 }
 
 function nextSeat(seat) {
@@ -586,9 +598,15 @@ function renderControls() {
 
 function renderTrick() {
   els.trickArea.innerHTML = "";
-  state.trick.forEach((play) => {
+  const showingLastTrick = state.trick.length === 0 && state.lastTrick?.plays?.length;
+  const plays = showingLastTrick ? state.lastTrick.plays : state.trick;
+  plays.forEach((play) => {
     const card = document.createElement("div");
-    card.className = `played-card played-${play.seat} ${cardSuitClass(play.card)}`;
+    const won = showingLastTrick && state.lastTrick.winner === play.seat;
+    card.className = `played-card played-${play.seat} ${cardSuitClass(play.card)} ${showingLastTrick ? "last-trick-card" : ""} ${won ? "winning-card" : ""}`;
+    card.title = showingLastTrick
+      ? `Last trick: ${seatNames[state.lastTrick.winner]} won with ${cardLabel(state.lastTrick.winningCard)}`
+      : `${seatNames[play.seat]} played ${cardLabel(play.card)}`;
     card.innerHTML = cardMarkup(play.card);
     els.trickArea.append(card);
   });

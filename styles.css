@@ -55,6 +55,23 @@ button:disabled {
   opacity: 0.45;
 }
 
+.nav-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  border-radius: 0.45rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--ink);
+  font-weight: 800;
+  padding: 0 1rem;
+  text-decoration: none;
+}
+
+.nav-button:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
 .app {
   width: min(1180px, calc(100vw - 24px));
   margin: 0 auto;
@@ -76,8 +93,13 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
   padding: 1rem;
   border-radius: 0.5rem;
+}
+
+.topbar > div:first-child {
+  min-width: min(100%, 18rem);
 }
 
 .eyebrow {
@@ -98,12 +120,21 @@ h1 {
   font-size: clamp(1.5rem, 3vw, 2.5rem);
 }
 
+.version-note {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .room-panel {
   display: flex;
   align-items: end;
+  flex: 1 1 28rem;
   gap: 0.6rem;
   flex-wrap: wrap;
   justify-content: flex-end;
+  min-width: min(100%, 18rem);
 }
 
 .join-field {
@@ -235,6 +266,15 @@ input {
 
 .played-north { grid-area: 1 / 2; }
 .played-south { grid-area: 3 / 2; }
+
+.last-trick-card {
+  opacity: 0.82;
+}
+
+.winning-card {
+  outline: 3px solid var(--gold);
+  box-shadow: 0 0 0 5px rgba(240, 196, 107, 0.22), 0 8px 18px rgba(0, 0, 0, 0.25);
+}
 
 .message {
   position: absolute;
@@ -469,6 +509,9 @@ input {
   }
 
   .room-panel {
+    display: grid;
+    flex: 0 1 auto;
+    grid-template-columns: 1fr;
     justify-content: stretch;
   }
 
@@ -476,6 +519,7 @@ input {
   .join-field,
   input {
     flex: 1;
+    min-width: 0;
     width: 100%;
   }
 

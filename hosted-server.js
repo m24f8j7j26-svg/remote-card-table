@@ -102,7 +102,8 @@ async function handleApi(req, res, url) {
   if (url.pathname === "/api/rooms" && req.method === "POST") {
     const body = await readJson(req);
     const game = body.state && body.state.game;
-    const code = makeRoomCode(game === "handfoot" ? "CARDS" : "SPADES");
+    const roomPrefixes = { handfoot: "CARDS", holdem: "HOLD" };
+    const code = makeRoomCode(roomPrefixes[game] || "SPADES");
     rooms.set(code, { state: body.state, presence: {}, updatedAt: Date.now() });
     sendJson(res, 201, { room: code });
     return true;

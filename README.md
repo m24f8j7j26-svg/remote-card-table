@@ -1,6 +1,6 @@
 # Remote Card Table
 
-This is a browser app for two people playing from different locations. It includes heads-up Spades and a two-player Hand & Foot table.
+This is a browser app for two people playing from different locations. It includes heads-up Spades, a two-player Hand & Foot table, and heads-up Texas Hold'em with simulated play-chip betting.
 
 The reliable remote-play version should be hosted on the internet. That gives both players one permanent link and avoids tunnel failures when the host Mac changes Wi-Fi networks.
 
@@ -17,6 +17,8 @@ The reliable remote-play version should be hosted on the internet. That gives bo
 9. Extra tricks are bags. Every 5 bags costs 50 points, and leftover bags carry forward.
 
 Use the **Hand & Foot** link in the top bar to switch games. Hand & Foot uses four decks, 11 cards in Hand and Foot, round draws of 2/3/4/5, opening melds of 50/90/120/150, matching clean and dirty book requirements of 2/3/4/5, frozen discard piles when a wild is present, and the red/black 3 rules from your house rules.
+
+Use the **Hold'em** link for two-player Texas Hold'em. It uses play chips only, with no deposits, cash value, buy-ins, or payouts. The table follows heads-up blind order: the dealer posts the small blind and acts first preflop, then the big blind acts first on the flop, turn, and river. Betting supports check, call, fold, bet, raise, and all-in actions with automatic showdown scoring.
 
 ## Hosted Version
 
@@ -36,7 +38,7 @@ After deployment, both players open the same permanent site URL:
 https://your-card-table-host.example.com
 ```
 
-Spades is at `/`; Hand & Foot is at `/handfoot.html`.
+Spades is at `/`; Hand & Foot is at `/handfoot.html`; Hold'em is at `/texas.html`.
 
 ## Running Locally For Testing
 
