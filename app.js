@@ -21,6 +21,7 @@ const els = {
   northScore: document.querySelector("#northScore"),
   handNumber: document.querySelector("#handNumber"),
   trickArea: document.querySelector("#trickArea"),
+  table: document.querySelector(".table"),
   gameMessage: document.querySelector("#gameMessage"),
   actionControls: document.querySelector("#bidControls"),
   newHandBtn: document.querySelector("#newHandBtn"),
@@ -607,16 +608,33 @@ function renderTrick() {
   els.trickArea.innerHTML = "";
   const showingLastTrick = state.trick.length === 0 && state.lastTrick?.plays?.length;
   const plays = showingLastTrick ? state.lastTrick.plays : state.trick;
-  plays.forEach((play) => {
+  els.table.classList.toggle("has-table-cards", plays.length > 0);
+  const playBySeat = Object.fromEntries(plays.map((play) => [play.seat, play]));
+  const tableCards = document.createElement("div");
+  tableCards.className = `table-cards ${showingLastTrick ? "showing-last-trick" : ""}`;
+  ["north", "south"].forEach((seat) => {
+    const slot = document.createElement("div");
+    const play = playBySeat[seat];
+    slot.className = `table-card-slot table-card-${seat}`;
+    if (!play) {
+      const placeholder = document.createElement("div");
+      placeholder.className = "played-card table-card-placeholder";
+      placeholder.setAttribute("aria-hidden", "true");
+      slot.append(placeholder);
+      tableCards.append(slot);
+      return;
+    }
     const card = document.createElement("div");
     const won = showingLastTrick && state.lastTrick.winner === play.seat;
-    card.className = `played-card played-${play.seat} ${cardSuitClass(play.card)} ${showingLastTrick ? "last-trick-card" : ""} ${won ? "winning-card" : ""}`;
+    card.className = `played-card table-played-card played-${play.seat} ${cardSuitClass(play.card)} ${showingLastTrick ? "last-trick-card" : ""} ${won ? "winning-card" : ""}`;
     card.title = showingLastTrick
       ? `Last trick: ${seatNames[state.lastTrick.winner]} won with ${cardLabel(state.lastTrick.winningCard)}`
       : `${seatNames[play.seat]} played ${cardLabel(play.card)}`;
     card.innerHTML = cardMarkup(play.card);
-    els.trickArea.append(card);
+    slot.append(card);
+    tableCards.append(slot);
   });
+  els.trickArea.append(tableCards);
 }
 
 function renderHand() {

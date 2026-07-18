@@ -243,14 +243,31 @@ input {
 
 .trick-area {
   position: absolute;
-  inset: 16%;
-  display: grid;
-  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  inset: 12% 16%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   place-items: center;
+  pointer-events: none;
+}
+
+.table-cards {
+  display: grid;
+  grid-template-columns: repeat(2, clamp(74px, 10vw, 108px));
+  gap: clamp(1rem, 7vw, 5rem);
+  align-items: center;
+  justify-content: center;
+}
+
+.table-card-slot {
+  display: grid;
+  place-items: center;
+  width: clamp(74px, 10vw, 108px);
+  min-height: clamp(104px, 14vw, 150px);
 }
 
 .played-card {
-  width: clamp(58px, 8vw, 86px);
+  width: clamp(68px, 9vw, 96px);
   aspect-ratio: 0.72;
   border-radius: 0.5rem;
   background: var(--card);
@@ -264,11 +281,20 @@ input {
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
 }
 
-.played-north { grid-area: 1 / 2; }
-.played-south { grid-area: 3 / 2; }
+.table-played-card,
+.table-card-placeholder {
+  width: clamp(74px, 10vw, 108px);
+}
+
+.table-card-placeholder {
+  border: 2px dashed rgba(255, 255, 255, 0.38);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: none;
+  opacity: 0.35;
+}
 
 .last-trick-card {
-  opacity: 0.82;
+  opacity: 0.94;
 }
 
 .winning-card {
@@ -286,6 +312,11 @@ input {
   font-weight: 750;
   text-align: center;
   pointer-events: none;
+}
+
+.table.has-table-cards .message {
+  top: 78%;
+  width: min(78%, 520px);
 }
 
 .action-bar {
