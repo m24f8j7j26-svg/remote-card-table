@@ -10,6 +10,9 @@ const roundRules = [
   { draw: 5, open: 150, books: 5 },
 ];
 const localSessionKey = "remote-card-table-handfoot-session-v1";
+const remoteRelayOrigin = "https://cards.boyzofsummerpics.com";
+const apiBaseUrl =
+  typeof location !== "undefined" && location.hostname.endsWith("github.io") ? remoteRelayOrigin : "";
 
 const els = {
   hostBtn: document.querySelector("#hostBtn"),
@@ -44,7 +47,7 @@ const els = {
 
 let role = null;
 let mySeat = null;
-let syncMode = "peer";
+let syncMode = apiBaseUrl ? "server" : "peer";
 let pollTimer = null;
 let presenceTimer = null;
 let presence = {};
@@ -55,6 +58,10 @@ const savedSession = loadLocalSession();
 let state = savedSession?.state || createGame();
 let peer = null;
 let peerConn = null;
+
+function apiUrl(path) {
+  return `${apiBaseUrl}${path}`;
+}
 
 function createDeck() {
   const ranks = ["A", "K", "Q", "J", "T", "9", "8", "7", "6", "5", "4", "3", "2"];
@@ -231,7 +238,7 @@ function sendPeerState(conn = peerConn) {
 
 async function createRoom() {
   setConnection("Creating room...");
-  const response = await fetch("/api/rooms", {
+  const response = await fetch(apiUrl("/api/rooms"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ state }),
@@ -254,7 +261,7 @@ async function joinRoom() {
   role = "guest";
   mySeat = humanSeats.guest;
   setConnection("Connecting...");
-  const response = await fetch(`/api/rooms/${encodeURIComponent(room)}/state`);
+  const response = await fetch(apiUrl(`/api/rooms/${encodeURIComponent(room)}/state`));
   if (!response.ok) {
     role = null;
     mySeat = null;
@@ -295,7 +302,7 @@ function startPolling(room) {
   clearInterval(pollTimer);
   pollTimer = setInterval(async () => {
     try {
-      const response = await fetch(`/api/rooms/${encodeURIComponent(room)}/state`);
+      const response = await fetch(apiUrl(`/api/rooms/${encodeURIComponent(room)}/state`));
       if (!response.ok) return;
       const payload = await response.json();
       pollFailures = 0;
@@ -319,7 +326,7 @@ function startPresence(room) {
 async function sendPresence(room) {
   if (!room || syncMode !== "server" || !mySeat) return;
   try {
-    const response = await fetch(`/api/rooms/${encodeURIComponent(room)}/presence`, {
+    const response = await fetch(apiUrl(`/api/rooms/${encodeURIComponent(room)}/presence`), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ seat: mySeat }),
@@ -344,7 +351,7 @@ async function broadcast() {
   }
   const room = els.roomInput.value.trim().toUpperCase();
   if (!room || syncMode !== "server" || !role) return;
-  await fetch(`/api/rooms/${encodeURIComponent(room)}/state`, {
+  await fetch(apiUrl(`/api/rooms/${encodeURIComponent(room)}/state`), {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ state }),
@@ -853,7 +860,7 @@ els.roomInput.addEventListener("input", () => {
 
 if (savedSession?.room) els.roomInput.value = savedSession.room;
 render();
-fetch("/api/health", { cache: "no-store" })
+fetch(apiUrl("/api/health"), { cache: "no-store" })
   .then((response) => {
     if (response.ok) {
       syncMode = "server";

@@ -4,6 +4,9 @@ const suitOrder = { C: 0, D: 1, H: 2, S: 3 };
 const rankOrder = { 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, T: 10, J: 11, Q: 12, K: 13, A: 14 };
 const seatNames = { north: "North", south: "South" };
 const humanSeats = { host: "south", guest: "north" };
+const remoteRelayOrigin = "https://cards.boyzofsummerpics.com";
+const apiBaseUrl =
+  typeof location !== "undefined" && location.hostname.endsWith("github.io") ? remoteRelayOrigin : "";
 
 const els = {
   hostBtn: document.querySelector("#hostBtn"),
@@ -33,7 +36,7 @@ const els = {
 let role = null;
 let mySeat = null;
 let state = createGame();
-let syncMode = "peer";
+let syncMode = apiBaseUrl ? "server" : "peer";
 let pollTimer = null;
 let presenceTimer = null;
 let presence = {};
@@ -41,6 +44,10 @@ let connectionText = "Not connected";
 let pollFailures = 0;
 let peer = null;
 let peerConn = null;
+
+function apiUrl(path) {
+  return `${apiBaseUrl}${path}`;
+}
 
 function createDeck() {
   return Object.keys(suitSymbols).flatMap((suit) =>
@@ -210,7 +217,7 @@ async function hostServerRoom() {
   mySeat = humanSeats.host;
   setConnection("Creating room...");
   try {
-    const response = await fetch("/api/rooms", {
+    const response = await fetch(apiUrl("/api/rooms"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ state }),
@@ -240,7 +247,7 @@ async function joinServerRoom() {
   setConnection("Connecting...");
   render();
   try {
-    const response = await fetch(`/api/rooms/${encodeURIComponent(room)}/state`);
+    const response = await fetch(apiUrl(`/api/rooms/${encodeURIComponent(room)}/state`));
     if (!response.ok) throw new Error("Room not found");
     const payload = await response.json();
     state = payload.state;
@@ -336,7 +343,7 @@ function broadcastState() {
 async function putServerState() {
   const room = els.roomInput.value.trim().toUpperCase();
   if (!room) return;
-  await fetch(`/api/rooms/${encodeURIComponent(room)}/state`, {
+  await fetch(apiUrl(`/api/rooms/${encodeURIComponent(room)}/state`), {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ state }),
@@ -350,7 +357,7 @@ function startStatePolling(room) {
   pollTimer = setInterval(async () => {
     if (!room) return;
     try {
-      const response = await fetch(`/api/rooms/${encodeURIComponent(room)}/state`);
+      const response = await fetch(apiUrl(`/api/rooms/${encodeURIComponent(room)}/state`));
       if (!response.ok) return;
       const payload = await response.json();
       pollFailures = 0;
@@ -374,7 +381,7 @@ function startPresence(room) {
 async function sendPresence(room) {
   if (!room || syncMode !== "server" || !mySeat) return;
   try {
-    const response = await fetch(`/api/rooms/${encodeURIComponent(room)}/presence`, {
+    const response = await fetch(apiUrl(`/api/rooms/${encodeURIComponent(room)}/presence`), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ seat: mySeat }),
@@ -664,7 +671,7 @@ els.roomInput.addEventListener("input", () => {
 
 render();
 
-fetch("/api/health", { cache: "no-store" })
+fetch(apiUrl("/api/health"), { cache: "no-store" })
   .then((response) => {
     if (response.ok) {
       syncMode = "server";
