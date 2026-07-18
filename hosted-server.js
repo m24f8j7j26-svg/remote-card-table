@@ -9,6 +9,12 @@ const MAX_BODY = 2 * 1024 * 1024;
 const ROOM_TTL_MS = 12 * 60 * 60 * 1000;
 const PRESENCE_ONLINE_MS = 15 * 1000;
 const rooms = new Map();
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,POST,PUT,OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Max-Age": "86400",
+};
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -33,11 +39,17 @@ function sendJson(res, status, payload) {
     "Content-Type": "application/json; charset=utf-8",
     "Content-Length": body.length,
     "Cache-Control": "no-store",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET,POST,PUT,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    ...corsHeaders,
   });
   res.end(body);
+}
+
+function sendPreflight(res) {
+  res.writeHead(204, {
+    "Cache-Control": "no-store",
+    ...corsHeaders,
+  });
+  res.end();
 }
 
 function readJson(req) {
@@ -90,7 +102,7 @@ function publicPresence(room) {
 
 async function handleApi(req, res, url) {
   if (req.method === "OPTIONS") {
-    sendJson(res, 204, {});
+    sendPreflight(res);
     return true;
   }
 
