@@ -609,6 +609,7 @@ function renderTrick() {
   const showingLastTrick = state.trick.length === 0 && state.lastTrick?.plays?.length;
   const plays = showingLastTrick ? state.lastTrick.plays : state.trick;
   els.table.classList.toggle("has-table-cards", plays.length > 0);
+  if (!plays.length) return;
   const playBySeat = Object.fromEntries(plays.map((play) => [play.seat, play]));
   const tableCards = document.createElement("div");
   tableCards.className = `table-cards ${showingLastTrick ? "showing-last-trick" : ""}`;
