@@ -646,10 +646,10 @@ function finishTrick() {
 function finishHand() {
   state.handResults = { south: null, north: null };
   seats.forEach((seat) => {
-    const result = handResultWithTotals(scorePlayer(state.bids[seat], state.taken[seat], state.bags[seat]), state.scores[seat]);
+    const result = handResultWithTotals(scorePlayer(state.bids[seat], state.taken[seat], state.bags[seat]), state.scores[seat], state.bags[seat]);
     state.handResults[seat] = result;
     state.scores[seat] = result.newTotal;
-    state.bags[seat] = result.bags;
+    state.bags[seat] = result.newBags;
   });
   state.phase = "complete";
   state.message = `Hand complete. South took ${state.taken.south}; North took ${state.taken.north}.`;
@@ -658,7 +658,7 @@ function finishHand() {
 function scorePlayer(bid, taken, currentBags) {
   const losses = [];
   if (bid === 0) {
-    if (taken === 0) return { score: nilBonus, bags: currentBags };
+    if (taken === 0) return { score: nilBonus, bags: currentBags, handBags: 0 };
     const totalBags = currentBags + taken;
     const penalties = Math.floor(totalBags / 5);
     losses.push({ amount: Math.abs(nilPenalty), reason: "bidding 0" });
@@ -666,12 +666,13 @@ function scorePlayer(bid, taken, currentBags) {
     return {
       score: nilPenalty - penalties * 50,
       bags: totalBags % 5,
+      handBags: taken,
       losses,
     };
   }
   if (taken < bid) {
     losses.push({ amount: 10 * bid, reason: `bidding ${bid}` });
-    return { score: -10 * bid, bags: currentBags, losses };
+    return { score: -10 * bid, bags: currentBags, handBags: 0, losses };
   }
   const overtricks = taken - bid;
   const totalBags = currentBags + overtricks;
@@ -680,13 +681,19 @@ function scorePlayer(bid, taken, currentBags) {
   return {
     score: 10 * bid + overtricks - penalties * 50,
     bags: totalBags % 5,
+    handBags: overtricks,
     losses,
   };
 }
 
-function handResultWithTotals(result, totalWas) {
+function handResultWithTotals(result, totalWas, bagsWas) {
+  const newBags = Number.isFinite(result.bags) ? result.bags : bagsWas;
   return {
     ...result,
+    bagsWas,
+    handBags: Number.isFinite(result.handBags) ? result.handBags : 0,
+    newBags,
+    bags: newBags,
     totalWas,
     newTotal: totalWas + result.score,
   };
@@ -776,40 +783,50 @@ function renderSeats() {
 }
 
 function handResultForSeat(seat) {
-  if (state.handResults?.[seat]) return normalizeHandResult(state.handResults[seat], state.scores[seat]);
+  if (state.handResults?.[seat]) return normalizeHandResult(state.handResults[seat], state.scores[seat], state.bags[seat]);
   if (state.bids[seat] === null || state.bids[seat] === undefined) return null;
-  return handResultWithTotals(scorePlayer(state.bids[seat], state.taken[seat], state.bags[seat]), state.scores[seat]);
+  return handResultWithTotals(scorePlayer(state.bids[seat], state.taken[seat], state.bags[seat]), state.scores[seat], state.bags[seat]);
 }
 
-function normalizeHandResult(result, currentTotal) {
-  if (Number.isFinite(result.totalWas) && Number.isFinite(result.newTotal)) return result;
+function normalizeHandResult(result, currentTotal, currentBags) {
   const score = Number.isFinite(result.score) ? result.score : 0;
   const newTotal = Number.isFinite(result.newTotal) ? result.newTotal : currentTotal;
+  const newBags = Number.isFinite(result.newBags)
+    ? result.newBags
+    : Number.isFinite(result.bags)
+      ? result.bags
+      : currentBags;
   return {
     ...result,
     score,
     losses: result.losses || [],
     totalWas: Number.isFinite(result.totalWas) ? result.totalWas : newTotal - score,
     newTotal,
+    bagsWas: Number.isFinite(result.bagsWas) ? result.bagsWas : newBags,
+    handBags: Number.isFinite(result.handBags) ? result.handBags : 0,
+    newBags,
+    bags: newBags,
   };
 }
 
 function scoreLedgerMarkup(seat, result) {
   const bid = bidLabel(state.bids[seat]);
   const totalWas = result ? result.totalWas : state.scores[seat];
+  const bagsWas = result ? result.bagsWas : state.bags[seat];
   const handScore = result ? formatScore(result.score) : "-";
+  const handBags = result ? formatBags(result.handBags) : "0 bags";
   const newTotal = result ? result.newTotal : state.scores[seat];
+  const newBags = result ? result.newBags : state.bags[seat];
   return `
     <div class="player-score-ledger">
-      <div class="score-line"><span>Total Was</span><strong>${totalWas}</strong></div>
+      <div class="score-line"><span>Total Was</span><strong>${totalWas}, ${formatBags(bagsWas)}</strong></div>
       <div class="score-stats">
         <span>Bid ${bid}</span>
         <span>Took ${state.taken[seat]}</span>
-        <span>Bags ${state.bags[seat]}</span>
       </div>
       ${handPenaltyMarkup(result)}
-      <div class="score-line hand-line ${result ? scoreToneClass(result.score) : ""}"><span>Hand</span><strong>${handScore}</strong></div>
-      <div class="score-line new-total"><span>New Total</span><strong>${newTotal}</strong></div>
+      <div class="score-line hand-line ${result ? scoreToneClass(result.score) : ""}"><span>Hand</span><strong>${handScore}, ${handBags}</strong></div>
+      <div class="score-line new-total"><span>New Total</span><strong>${newTotal}, ${formatBags(newBags)}</strong></div>
     </div>
   `;
 }
@@ -1011,6 +1028,10 @@ function bidLabel(bid) {
 
 function formatScore(score) {
   return score > 0 ? `+${score}` : `${score}`;
+}
+
+function formatBags(bags) {
+  return `${bags} ${bags === 1 ? "bag" : "bags"}`;
 }
 
 function scoreToneClass(score) {
