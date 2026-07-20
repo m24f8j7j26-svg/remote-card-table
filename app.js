@@ -6,6 +6,7 @@ const seatNames = { north: "North", south: "South" };
 const humanSeats = { host: "south", guest: "north" };
 const nilBonus = 100;
 const nilPenalty = -100;
+const localSessionKey = "remote-card-table-spades-session-v1";
 const remoteRelayOrigin = "https://cards.boyzofsummerpics.com";
 const apiBaseUrl =
   typeof location !== "undefined" && location.hostname.endsWith("github.io") ? remoteRelayOrigin : "";
@@ -36,17 +37,26 @@ const els = {
   },
 };
 
+const savedSession = loadLocalSession();
 let role = null;
 let mySeat = null;
-let state = createGame();
+let state = normalizeState(savedSession?.state);
 let syncMode = apiBaseUrl ? "server" : "peer";
 let pollTimer = null;
 let presenceTimer = null;
 let presence = {};
 let connectionText = "Not connected";
 let pollFailures = 0;
+let serverWriteInFlight = false;
+let queuedServerState = null;
+let serverRetryTimer = null;
 let peer = null;
 let peerConn = null;
+
+if (savedSession?.room) {
+  els.roomInput.value = savedSession.room;
+  connectionText = "Saved room found";
+}
 
 function apiUrl(path) {
   return `${apiBaseUrl}${path}`;
@@ -58,6 +68,7 @@ function stateRevision(game = state) {
 
 function normalizeState(game) {
   if (!game) return createGame();
+  if (!game.game) game.game = "spades";
   if (!Number.isFinite(game.revision)) game.revision = 0;
   return game;
 }
@@ -67,7 +78,63 @@ function bumpStateRevision() {
 }
 
 function shouldAcceptRemoteState(remoteState) {
-  return stateRevision(remoteState) >= stateRevision();
+  return stateRevision(remoteState) > stateRevision();
+}
+
+function currentRoomCode() {
+  return els.roomInput.value.trim().toUpperCase();
+}
+
+function roleForSeat(seat) {
+  return seat === humanSeats.host ? "host" : "guest";
+}
+
+function cloneState(game) {
+  return JSON.parse(JSON.stringify(game));
+}
+
+function newerState(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  return stateRevision(a) >= stateRevision(b) ? a : b;
+}
+
+function loadLocalSession() {
+  try {
+    if (typeof localStorage === "undefined") return null;
+    const raw = localStorage.getItem(localSessionKey);
+    if (!raw) return null;
+    const session = JSON.parse(raw);
+    if (session?.state && seats.includes(session.seat) && typeof session.room === "string") return session;
+  } catch (error) {
+    clearLocalSession();
+  }
+  return null;
+}
+
+function saveLocalSession() {
+  try {
+    if (typeof localStorage === "undefined") return;
+    const room = currentRoomCode();
+    if (!room || !mySeat) return;
+    localStorage.setItem(localSessionKey, JSON.stringify({
+      state,
+      room,
+      seat: mySeat,
+      role: role || roleForSeat(mySeat),
+      updatedAt: Date.now(),
+    }));
+  } catch (error) {
+    // Private browsing can block local storage; remote play still works without refresh restore.
+  }
+}
+
+function clearLocalSession() {
+  try {
+    if (typeof localStorage !== "undefined") localStorage.removeItem(localSessionKey);
+  } catch (error) {
+    // Ignore storage cleanup failures.
+  }
 }
 
 function createDeck() {
@@ -94,6 +161,7 @@ function createGame(previous = null) {
   const handNumber = previous ? previous.handNumber + 1 : 1;
   const firstSeat = startingSeat(previous);
   return {
+    game: "spades",
     revision: previous ? stateRevision(previous) : 0,
     firstSeat,
     handNumber,
@@ -231,6 +299,7 @@ function wireGuestPeerConnection(conn) {
   conn.on("data", (message) => {
     if (message.type === "state") {
       state = normalizeState(message.state);
+      saveLocalSession();
       render();
     }
   });
@@ -257,6 +326,7 @@ async function hostServerRoom() {
     setConnection("Room ready");
     startStatePolling(payload.room);
     startPresence(payload.room);
+    saveLocalSession();
     render();
   } catch (error) {
     setConnection("Local relay unavailable");
@@ -266,31 +336,54 @@ async function hostServerRoom() {
 }
 
 async function joinServerRoom() {
-  const room = els.roomInput.value.trim().toUpperCase();
+  const room = currentRoomCode();
   if (!room) {
     setConnection("Enter a room code");
     return;
   }
-  role = "guest";
-  mySeat = humanSeats.guest;
-  setConnection("Connecting...");
+  await connectServerRoom(room, humanSeats.guest, "Connected", "Ask the host for the newest room code, then try Join again.");
+}
+
+async function reconnectSavedServerRoom() {
+  if (!savedSession?.room || !seats.includes(savedSession.seat)) return false;
+  return connectServerRoom(
+    savedSession.room,
+    savedSession.seat,
+    "Reconnected",
+    "The saved room is no longer available. Host a new room or ask for a fresh room code.",
+    true
+  );
+}
+
+async function connectServerRoom(room, seat, connectedText, missingMessage, restoring = false) {
+  role = roleForSeat(seat);
+  mySeat = seat;
+  els.roomInput.value = room;
+  setConnection(restoring ? "Reconnecting..." : "Connecting...");
   render();
   try {
     const response = await fetch(apiUrl(`/api/rooms/${encodeURIComponent(room)}/state`));
     if (!response.ok) throw new Error("Room not found");
     const payload = await response.json();
-    state = normalizeState(payload.state);
+    const remoteState = normalizeState(payload.state);
+    const savedState = normalizeState(savedSession?.state);
+    state = restoring && stateRevision(savedState) > stateRevision(remoteState) ? savedState : remoteState;
     presence = payload.presence || {};
-    setConnection("Connected");
+    setConnection(connectedText);
     startStatePolling(room);
     startPresence(room);
+    saveLocalSession();
+    if (stateRevision(state) > stateRevision(remoteState)) putServerState();
     render();
+    return true;
   } catch (error) {
     setConnection("Room not found");
-    state.message = "Ask the host for the newest room code, then try Join again.";
+    state.message = missingMessage;
     role = null;
     mySeat = null;
+    if (restoring) clearLocalSession();
     render();
+    return false;
   }
 }
 
@@ -326,6 +419,9 @@ function clearRoomCode() {
   presenceTimer = null;
   presence = {};
   pollFailures = 0;
+  queuedServerState = null;
+  clearTimeout(serverRetryTimer);
+  serverRetryTimer = null;
   peerConn?.close();
   peer?.destroy();
   peerConn = null;
@@ -334,6 +430,7 @@ function clearRoomCode() {
   mySeat = null;
   els.roomInput.value = "";
   state = createGame();
+  clearLocalSession();
   setConnection(syncMode === "server" ? "Remote relay ready" : "Browser relay ready");
   render();
 }
@@ -371,6 +468,7 @@ function applyAction(action) {
 }
 
 function broadcastState() {
+  saveLocalSession();
   if (syncMode === "peer" && role === "host" && peerConn?.open) {
     sendPeerState();
   }
@@ -380,16 +478,40 @@ function broadcastState() {
   render();
 }
 
-async function putServerState() {
-  const room = els.roomInput.value.trim().toUpperCase();
+function putServerState() {
+  const room = currentRoomCode();
   if (!room) return;
-  await fetch(apiUrl(`/api/rooms/${encodeURIComponent(room)}/state`), {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ state }),
-  }).catch(() => {
-    setConnection("Relay update failed");
-  });
+  queuedServerState = cloneState(state);
+  flushQueuedServerState(room);
+}
+
+async function flushQueuedServerState(room = currentRoomCode()) {
+  if (serverWriteInFlight || !queuedServerState || !room) return;
+  clearTimeout(serverRetryTimer);
+  serverRetryTimer = null;
+  serverWriteInFlight = true;
+  const snapshot = queuedServerState;
+  queuedServerState = null;
+  try {
+    const response = await fetch(apiUrl(`/api/rooms/${encodeURIComponent(room)}/state`), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state: snapshot }),
+    });
+    if (!response.ok) throw new Error("Relay update failed");
+    pollFailures = 0;
+    if (connectionText === "Relay retrying") connectionText = role === "host" ? "Room ready" : "Connected";
+  } catch (error) {
+    queuedServerState = newerState(queuedServerState, snapshot);
+    setConnection("Relay retrying");
+    serverRetryTimer = setTimeout(() => {
+      serverRetryTimer = null;
+      flushQueuedServerState(room);
+    }, 900);
+  } finally {
+    serverWriteInFlight = false;
+    if (queuedServerState && !serverRetryTimer) flushQueuedServerState(room);
+  }
 }
 
 function startStatePolling(room) {
@@ -409,6 +531,7 @@ function startStatePolling(room) {
         return;
       }
       state = remoteState;
+      saveLocalSession();
       render();
     } catch (error) {
       pollFailures += 1;
@@ -596,6 +719,7 @@ function render() {
   els.hostBtn.disabled = Boolean(role);
   els.joinBtn.disabled = Boolean(role);
   els.copyBtn.disabled = !els.roomInput.value.trim();
+  els.roomInput.disabled = Boolean(role);
   els.roomStatus.textContent = els.roomInput.value.trim().toUpperCase() || "-";
   renderConnection();
   els.seatStatus.textContent = mySeat ? seatNames[mySeat] : "Choose Host or Join";
@@ -835,13 +959,18 @@ els.roomInput.addEventListener("input", () => {
   render();
 });
 
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", saveLocalSession);
+}
+
 render();
 
 fetch(apiUrl("/api/health"), { cache: "no-store" })
-  .then((response) => {
+  .then(async (response) => {
     if (response.ok) {
       syncMode = "server";
       setConnection("Remote relay ready");
+      await reconnectSavedServerRoom();
     } else {
       syncMode = "peer";
       setConnection("Browser relay ready");
