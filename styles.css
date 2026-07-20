@@ -620,6 +620,29 @@ input {
   margin-top: 0.35rem;
 }
 
+@media (min-width: 781px) {
+  .app {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .topbar,
+  .table-shell,
+  .action-bar,
+  .hand-panel {
+    grid-column: 1 / -1;
+  }
+
+  .status-strip,
+  .scoreboard,
+  .table-shell,
+  .action-bar,
+  .hand-panel {
+    margin-top: 0;
+  }
+}
+
 @media (max-width: 780px) {
   .topbar {
     align-items: stretch;
