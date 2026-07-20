@@ -286,6 +286,28 @@ input {
   min-height: clamp(108px, 15vw, 156px);
 }
 
+.draft-choice {
+  border-radius: 0.55rem;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.draft-choice:hover {
+  filter: brightness(1.08);
+  transform: translateY(-2px);
+}
+
+.draft-choice:focus {
+  outline: 0;
+}
+
+.draft-choice:hover .table-pile-card,
+.draft-choice:focus-visible .table-pile-card {
+  outline: 3px solid var(--gold);
+  box-shadow: 0 0 0 5px rgba(240, 196, 107, 0.22), 0 9px 22px rgba(0, 0, 0, 0.28);
+}
+
 .table-pile::before,
 .table-pile::after {
   content: "";

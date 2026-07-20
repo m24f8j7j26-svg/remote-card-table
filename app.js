@@ -736,7 +736,7 @@ function render() {
 
 function messageForViewer() {
   if (state.phase === "draft" && mySeat === state.currentTurn && currentDraftCard()) {
-    return `Your draft card is ${cardLabel(currentDraftCard())}. Keep it or discard it.`;
+    return `Your draft card is ${cardLabel(currentDraftCard())}. Click the card to keep it, or click the discard pile to discard it.`;
   }
   if (state.phase === "draft" && state.lastDraft) {
     const verb = state.lastDraft.choice === "keep" ? "kept the first card" : "discarded the first card";
@@ -758,6 +758,10 @@ function currentDraftCard() {
   return state.deck[0] || null;
 }
 
+function isMyDraftTurn() {
+  return state.phase === "draft" && mySeat === state.currentTurn && Boolean(currentDraftCard());
+}
+
 function renderSeats() {
   seats.forEach((seat) => {
     const bid = bidLabel(state.bids[seat]);
@@ -773,15 +777,6 @@ function renderSeats() {
 function renderControls() {
   els.actionControls.innerHTML = "";
   if (!mySeat) return;
-  if (state.phase === "draft" && state.currentTurn === mySeat && currentDraftCard()) {
-    ["keep", "discard"].forEach((choice) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = choice === "keep" ? "Keep" : "Discard";
-      button.addEventListener("click", () => submitAction({ kind: "draft", seat: mySeat, choice }));
-      els.actionControls.append(button);
-    });
-  }
   if (state.phase === "bidding" && state.currentTurn === mySeat && state.bids[mySeat] === null) {
     for (let bid = 0; bid <= 13; bid += 1) {
       const button = document.createElement("button");
@@ -850,10 +845,11 @@ function createStockPile() {
   const pile = document.createElement("div");
   pile.className = "table-pile stock-pile";
   pile.title = `${state.deck.length} cards in the stock`;
-  if (state.phase === "draft" && mySeat === state.currentTurn && currentDraftCard()) {
+  if (isMyDraftTurn()) {
     const card = document.createElement("div");
     card.className = `played-card table-pile-card stock-top-card ${cardSuitClass(currentDraftCard())}`;
-    card.title = `Your draft card: ${cardLabel(currentDraftCard())}`;
+    wireDraftChoice(pile, "keep", `Keep ${cardLabel(currentDraftCard())}`);
+    card.title = `Click to keep ${cardLabel(currentDraftCard())}`;
     card.innerHTML = cardMarkup(currentDraftCard());
     card.append(createPileCount(state.deck.length));
     pile.append(card);
@@ -867,10 +863,14 @@ function createDiscardPile() {
   const pile = document.createElement("div");
   pile.className = "table-pile discard-pile";
   pile.title = `${state.discards.length} cards in the discard pile`;
+  if (isMyDraftTurn()) {
+    wireDraftChoice(pile, "discard", `Discard ${cardLabel(currentDraftCard())}`);
+  }
   if (!state.discards.length) {
     pile.classList.add("empty-pile");
     const empty = document.createElement("div");
     empty.className = "table-pile-card empty-discard-slot";
+    if (isMyDraftTurn()) empty.title = `Click to discard ${cardLabel(currentDraftCard())}`;
     pile.append(empty);
     return pile;
   }
@@ -902,6 +902,20 @@ function createPileCount(count) {
   badge.className = "pile-count";
   badge.textContent = count;
   return badge;
+}
+
+function wireDraftChoice(element, choice, label) {
+  element.classList.add("draft-choice", `${choice}-choice`);
+  element.title = label;
+  element.setAttribute("role", "button");
+  element.setAttribute("tabindex", "0");
+  element.setAttribute("aria-label", label);
+  element.addEventListener("click", () => submitAction({ kind: "draft", seat: mySeat, choice }));
+  element.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    submitAction({ kind: "draft", seat: mySeat, choice });
+  });
 }
 
 function renderHand() {
