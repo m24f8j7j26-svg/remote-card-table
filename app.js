@@ -646,9 +646,9 @@ function finishTrick() {
 function finishHand() {
   state.handResults = { south: null, north: null };
   seats.forEach((seat) => {
-    const result = scorePlayer(state.bids[seat], state.taken[seat], state.bags[seat]);
+    const result = handResultWithTotals(scorePlayer(state.bids[seat], state.taken[seat], state.bags[seat]), state.scores[seat]);
     state.handResults[seat] = result;
-    state.scores[seat] += result.score;
+    state.scores[seat] = result.newTotal;
     state.bags[seat] = result.bags;
   });
   state.phase = "complete";
@@ -681,6 +681,14 @@ function scorePlayer(bid, taken, currentBags) {
     score: 10 * bid + overtricks - penalties * 50,
     bags: totalBags % 5,
     losses,
+  };
+}
+
+function handResultWithTotals(result, totalWas) {
+  return {
+    ...result,
+    totalWas,
+    newTotal: totalWas + result.score,
   };
 }
 
@@ -763,9 +771,7 @@ function renderSeats() {
     els.seats[seat].classList.toggle("active-seat", state.currentTurn === seat && state.phase !== "complete");
     els.seats[seat].innerHTML = `
       <div class="player-name">${seatNames[seat]}${seat === mySeat ? " (you)" : ""}</div>
-      <div class="player-score"><span>Score</span><strong>${state.scores[seat]}</strong></div>
-      <div class="player-hand-score ${handResult ? scoreToneClass(handResult.score) : ""}"><span>Hand</span><strong>${handResult ? formatScore(handResult.score) : "-"}</strong></div>
-      ${handPenaltyMarkup(seat, handResult)}
+      ${scoreLedgerMarkup(seat, handResult)}
       <div class="player-stats">
         <span>Bid ${bid}</span>
         <span>Took ${state.taken[seat]}</span>
@@ -776,12 +782,39 @@ function renderSeats() {
 }
 
 function handResultForSeat(seat) {
-  if (state.handResults?.[seat]) return state.handResults[seat];
+  if (state.handResults?.[seat]) return normalizeHandResult(state.handResults[seat], state.scores[seat]);
   if (state.bids[seat] === null || state.bids[seat] === undefined) return null;
-  return scorePlayer(state.bids[seat], state.taken[seat], state.bags[seat]);
+  return handResultWithTotals(scorePlayer(state.bids[seat], state.taken[seat], state.bags[seat]), state.scores[seat]);
 }
 
-function handPenaltyMarkup(seat, result) {
+function normalizeHandResult(result, currentTotal) {
+  if (Number.isFinite(result.totalWas) && Number.isFinite(result.newTotal)) return result;
+  const score = Number.isFinite(result.score) ? result.score : 0;
+  const newTotal = Number.isFinite(result.newTotal) ? result.newTotal : currentTotal;
+  return {
+    ...result,
+    score,
+    losses: result.losses || [],
+    totalWas: Number.isFinite(result.totalWas) ? result.totalWas : newTotal - score,
+    newTotal,
+  };
+}
+
+function scoreLedgerMarkup(seat, result) {
+  const totalWas = result ? result.totalWas : state.scores[seat];
+  const handScore = result ? formatScore(result.score) : "-";
+  const newTotal = result ? result.newTotal : state.scores[seat];
+  return `
+    <div class="player-score-ledger">
+      <div class="score-line"><span>Total Was</span><strong>${totalWas}</strong></div>
+      ${handPenaltyMarkup(result)}
+      <div class="score-line hand-line ${result ? scoreToneClass(result.score) : ""}"><span>Hand</span><strong>${handScore}</strong></div>
+      <div class="score-line new-total"><span>New Total</span><strong>${newTotal}</strong></div>
+    </div>
+  `;
+}
+
+function handPenaltyMarkup(result) {
   const losses = result?.losses || [];
   if (!losses.length) return "";
   return `

@@ -252,54 +252,56 @@ input {
   font-weight: 850;
 }
 
-.player-score {
+.player-score-ledger {
   display: grid;
-  gap: 0.1rem;
-  justify-items: center;
+  gap: 0.22rem;
+  width: 100%;
 }
 
-.player-score span {
+.score-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.score-line span {
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 850;
   text-transform: uppercase;
 }
 
-.player-score strong {
-  font-size: clamp(2rem, 4vw, 3rem);
-  line-height: 0.95;
-}
-
-.player-hand-score {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.35rem;
+.score-line strong {
   color: var(--ink);
+  font-size: 1rem;
   font-weight: 900;
 }
 
-.player-hand-score span {
-  color: var(--muted);
-  font-size: 0.74rem;
-  text-transform: uppercase;
-}
-
-.player-hand-score strong {
+.hand-line strong {
   color: var(--gold);
-  font-size: 1.15rem;
 }
 
-.player-hand-score.negative-score strong {
+.hand-line.negative-score strong {
   color: #ffb6a8;
 }
 
-.player-hand-score.positive-score strong {
+.new-total {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 0.2rem;
+}
+
+.new-total strong {
   color: var(--gold);
+  font-size: 1.25rem;
 }
 
 .player-hand-detail {
   display: grid;
   gap: 0.12rem;
+  justify-items: end;
+  width: 100%;
   color: #ffb6a8;
   font-size: 0.72rem;
   font-weight: 850;
