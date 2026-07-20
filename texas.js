@@ -1023,6 +1023,16 @@ function solverCard(card) {
   return `${card.rank}${card.suit.toLowerCase()}`;
 }
 
+function confirmNewHand() {
+  const ok = window.confirm("Start a new hand? This will end the current poker hand for both players.");
+  if (ok) submitAction({ kind: "newHand" });
+}
+
+function confirmNewGame() {
+  const ok = window.confirm("Start a new game? This will reset play-chip stacks and the current hand for both players.");
+  if (ok) submitAction({ kind: "newGame" });
+}
+
 els.hostBtn.addEventListener("click", hostRoom);
 els.joinBtn.addEventListener("click", joinRoom);
 els.clearRoomBtn.addEventListener("click", clearRoomCode);
@@ -1035,8 +1045,8 @@ els.copyBtn.addEventListener("click", async () => {
     els.copyBtn.textContent = "Copy code";
   }, 1200);
 });
-els.newHandBtn.addEventListener("click", () => submitAction({ kind: "newHand" }));
-els.newGameBtn.addEventListener("click", () => submitAction({ kind: "newGame" }));
+els.newHandBtn.addEventListener("click", confirmNewHand);
+els.newGameBtn.addEventListener("click", confirmNewGame);
 els.roomInput.addEventListener("input", () => {
   els.roomInput.value = els.roomInput.value.toUpperCase();
   render();

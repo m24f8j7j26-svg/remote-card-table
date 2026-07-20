@@ -829,21 +829,29 @@ function cardMarkup(card) {
   return `<span class="rank">${card.rank}</span><span class="suit">${suitSymbols[card.suit]}</span>`;
 }
 
+function confirmNewRound() {
+  const ok = window.confirm("Start a new round? This will end the current round for both players.");
+  if (!ok) return;
+  state = createGame(state);
+  selected.clear();
+  broadcast();
+}
+
+function confirmNewGame() {
+  const ok = window.confirm("Start a new game? This will reset scores and the current round for both players.");
+  if (!ok) return;
+  state = createGame();
+  selected.clear();
+  broadcast();
+}
+
 els.hostBtn.addEventListener("click", hostRoom);
 els.joinBtn.addEventListener("click", joinRoom);
 els.clearRoomBtn.addEventListener("click", clearRoomCode);
 els.stockBtn.addEventListener("click", takeStock);
 els.discardBtn.addEventListener("click", handleDiscardPileClick);
-els.newRoundBtn.addEventListener("click", () => {
-  state = createGame(state);
-  selected.clear();
-  broadcast();
-});
-els.newGameBtn.addEventListener("click", () => {
-  state = createGame();
-  selected.clear();
-  broadcast();
-});
+els.newRoundBtn.addEventListener("click", confirmNewRound);
+els.newGameBtn.addEventListener("click", confirmNewGame);
 els.copyBtn.addEventListener("click", async () => {
   const code = els.roomInput.value.trim().toUpperCase();
   if (!code) return;
