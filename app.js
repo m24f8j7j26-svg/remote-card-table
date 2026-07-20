@@ -871,7 +871,7 @@ function handPenaltyMarkup(result) {
   return `
     ${losses.map((loss) => `
       <div class="score-ledger-row player-hand-detail">
-        <span aria-hidden="true"></span>
+        <span class="penalty-label">Penalty</span>
         <span>-${loss.amount}${lossLabel(loss)}</span>
         <span aria-hidden="true"></span>
       </div>

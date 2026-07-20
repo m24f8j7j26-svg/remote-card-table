@@ -331,12 +331,14 @@ input {
 
 .hand-value,
 .net-value {
-  color: var(--gold);
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 850;
 }
 
 .hand-value.negative-score,
 .net-value.negative-score {
-  color: #ffb6a8;
+  color: var(--muted);
 }
 
 .score-divider {
@@ -346,7 +348,15 @@ input {
 
 .new-total-value,
 .new-total-bags {
-  color: var(--gold);
+  color: inherit;
+}
+
+.new-total-value {
+  color: var(--ink);
+}
+
+.new-total-bags {
+  color: var(--muted);
 }
 
 .new-total-label {
@@ -358,6 +368,11 @@ input {
   font-size: 0.72rem;
   font-weight: 850;
   line-height: 1.15;
+}
+
+.penalty-label {
+  justify-self: start;
+  text-transform: uppercase;
 }
 
 .player-hand-detail span:nth-child(2) {
