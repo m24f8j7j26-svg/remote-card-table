@@ -262,11 +262,12 @@ input {
 
 .score-ledger-row {
   display: grid;
-  grid-template-columns: minmax(5.6rem, 1fr) minmax(3.9rem, max-content) minmax(2.25rem, max-content);
+  grid-template-columns: minmax(6.4rem, 1fr) 4.75rem 3.4rem;
   align-items: baseline;
   column-gap: 0.65rem;
   width: 100%;
   font-variant-numeric: tabular-nums;
+  text-align: left;
 }
 
 .score-ledger-header,
@@ -282,8 +283,13 @@ input {
   font-size: 0.62rem;
 }
 
+.score-ledger-header span:first-child {
+  justify-self: start;
+}
+
 .score-ledger-header span:not(:first-child) {
   justify-self: center;
+  text-align: center;
 }
 
 .score-label {
@@ -294,22 +300,21 @@ input {
 
 .score-value,
 .score-bags {
-  justify-self: end;
+  justify-self: center;
   color: var(--ink);
   font-size: 1.04rem;
   font-weight: 900;
   line-height: 1.08;
+  text-align: center;
   white-space: nowrap;
 }
 
 .score-bags {
   color: var(--muted);
-  min-width: 1.5rem;
-  text-align: right;
 }
 
 .score-empty {
-  min-width: 1.5rem;
+  justify-self: center;
 }
 
 .hand-value,
@@ -344,7 +349,7 @@ input {
 }
 
 .player-hand-detail span:nth-child(2) {
-  justify-self: end;
+  justify-self: center;
   min-width: max-content;
 }
 
@@ -366,7 +371,8 @@ input {
 }
 
 .score-stats span:not(:first-child) {
-  justify-self: end;
+  justify-self: center;
+  text-align: center;
 }
 
 .table-hand-badge {
