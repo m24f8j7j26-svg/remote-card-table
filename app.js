@@ -786,9 +786,16 @@ function handPenaltyMarkup(seat, result) {
   if (!losses.length) return "";
   return `
     <div class="player-hand-detail">
-      ${losses.map((loss) => `<span>-${loss.amount}${loss.reason === "bags" ? " (Bags)" : ""}</span>`).join("")}
+      ${losses.map((loss) => `<span>-${loss.amount}${lossLabel(loss)}</span>`).join("")}
     </div>
   `;
+}
+
+function lossLabel(loss) {
+  if (loss.reason === "bags") return " (Bags)";
+  if (loss.reason === "bidding 0") return " (Nil)";
+  if (loss.reason?.startsWith("bidding ")) return " (Missed Bid)";
+  return "";
 }
 
 function renderControls() {
