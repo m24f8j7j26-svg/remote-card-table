@@ -349,6 +349,7 @@ function applyAction(action) {
   if (action.kind === "draft") changed = draftCard(action.seat, action.choice);
   if (action.kind === "bid") changed = placeBid(action.seat, action.bid);
   if (action.kind === "play") changed = playCard(action.seat, action.cardId);
+  if (action.kind === "nextTrick") changed = clearLastTrick(action.seat);
   if (action.kind === "newHand") {
     state = createGame(state);
     changed = true;
@@ -483,6 +484,7 @@ function playCard(seat, cardId) {
   const hand = state.hands[seat];
   const card = hand.find((item) => item.id === cardId);
   if (!card || !isLegalPlay(seat, card)) return false;
+  if (state.trick.length === 0 && state.lastTrick?.plays?.length) state.lastTrick = null;
   state.hands[seat] = hand.filter((item) => item.id !== cardId);
   state.trick.push({ seat, card });
   if (card.suit === "S") state.spadesBroken = true;
@@ -495,6 +497,15 @@ function playCard(seat, cardId) {
   return true;
 }
 
+function clearLastTrick(seat) {
+  if (state.phase !== "playing" || state.currentTurn !== seat || state.trick.length || !state.lastTrick?.plays?.length) {
+    return false;
+  }
+  state.lastTrick = null;
+  state.message = `${seatNames[state.currentTurn]} leads the next trick.`;
+  return true;
+}
+
 function finishTrick() {
   const plays = state.trick.map((play) => ({ seat: play.seat, card: play.card }));
   const winning = winningPlay(plays);
@@ -502,7 +513,7 @@ function finishTrick() {
   state.lastTrick = { plays, winner, winningCard: winning.card };
   state.taken[winner] += 1;
   state.currentTurn = winner;
-  state.message = `${seatNames[winner]} takes the trick with ${cardLabel(winning.card)}. ${trickSummary(plays)}.`;
+  state.message = `${seatNames[winner]} takes the trick with ${cardLabel(winning.card)}. ${seatNames[winner]} leads next. ${trickSummary(plays)}.`;
   state.trick = [];
   if (seats.every((seat) => state.hands[seat].length === 0)) finishHand();
 }
@@ -648,6 +659,13 @@ function renderControls() {
       button.addEventListener("click", () => submitAction({ kind: "bid", seat: mySeat, bid }));
       els.actionControls.append(button);
     }
+  }
+  if (state.phase === "playing" && state.currentTurn === mySeat && state.trick.length === 0 && state.lastTrick?.plays?.length) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Next trick";
+    button.addEventListener("click", () => submitAction({ kind: "nextTrick", seat: mySeat }));
+    els.actionControls.append(button);
   }
 }
 
