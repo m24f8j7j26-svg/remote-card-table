@@ -829,26 +829,34 @@ function scoreLedgerMarkup(seat, result) {
   const netTone = result ? scoreToneClass(result.score) : "";
   return `
     <div class="player-score-ledger">
-      <div class="score-ledger-grid">
-        <span class="score-label previous-label">Previous</span>
-        <span class="score-heading">Score</span>
-        <span class="score-heading">Bags</span>
-        <span class="score-label previous-value-label" aria-hidden="true"></span>
+      <div class="score-ledger-row score-ledger-header">
+        <span>Previous</span>
+        <span>Score</span>
+        <span>Bags</span>
+      </div>
+      <div class="score-ledger-row">
+        <span aria-hidden="true"></span>
         <strong class="score-value">${totalWas}</strong>
         <strong class="score-bags" aria-label="${formatBags(bagsWas)}">${bagsWas}</strong>
-        <div class="score-stats">
-          <span>Bid ${bid}</span>
-          <span>Took ${state.taken[seat]}</span>
-          <span>Bags ${handBags}</span>
-        </div>
+      </div>
+      <div class="score-stats">
+        <span>Bid ${bid}</span>
+        <span>Took ${state.taken[seat]}</span>
+        <span>Bags ${handBags}</span>
+      </div>
+      <div class="score-ledger-row">
         <span class="score-label">Hand</span>
         <strong class="score-value hand-value ${handTone}">${handTotal}</strong>
         <span class="score-empty" aria-hidden="true"></span>
-        ${handPenaltyMarkup(result)}
+      </div>
+      ${handPenaltyMarkup(result)}
+      <div class="score-ledger-row">
         <span class="score-label net-label">Net</span>
         <strong class="score-value net-value ${netTone}">${netScore}</strong>
         <span class="score-empty" aria-hidden="true"></span>
-        <span class="score-divider" aria-hidden="true"></span>
+      </div>
+      <span class="score-divider" aria-hidden="true"></span>
+      <div class="score-ledger-row">
         <span class="score-label new-total-label">New Total</span>
         <strong class="score-value new-total-value">${newTotal}</strong>
         <strong class="score-bags new-total-bags" aria-label="${formatBags(newBags)}">${newBags}</strong>
@@ -861,9 +869,13 @@ function handPenaltyMarkup(result) {
   const losses = result?.losses || [];
   if (!losses.length) return "";
   return `
-    <div class="player-hand-detail">
-      ${losses.map((loss) => `<span>-${loss.amount}${lossLabel(loss)}</span>`).join("")}
-    </div>
+    ${losses.map((loss) => `
+      <div class="score-ledger-row player-hand-detail">
+        <span aria-hidden="true"></span>
+        <span>-${loss.amount}${lossLabel(loss)}</span>
+        <span aria-hidden="true"></span>
+      </div>
+    `).join("")}
   `;
 }
 
