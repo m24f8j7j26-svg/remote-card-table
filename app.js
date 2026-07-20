@@ -68,6 +68,7 @@ function normalizeState(game) {
   if (!game) return createGame();
   if (!game.game) game.game = "spades";
   if (!Number.isFinite(game.revision)) game.revision = 0;
+  if (!game.handResults) game.handResults = { south: null, north: null };
   return game;
 }
 
@@ -170,6 +171,7 @@ function createGame(previous = null) {
     discards: [],
     bids: { south: null, north: null },
     taken: { south: 0, north: 0 },
+    handResults: { south: null, north: null },
     currentTurn: firstSeat,
     phase: "draft",
     trick: [],
@@ -642,8 +644,10 @@ function finishTrick() {
 }
 
 function finishHand() {
+  state.handResults = { south: null, north: null };
   seats.forEach((seat) => {
     const result = scorePlayer(state.bids[seat], state.taken[seat], state.bags[seat]);
+    state.handResults[seat] = result;
     state.scores[seat] += result.score;
     state.bags[seat] = result.bags;
   });
@@ -652,22 +656,31 @@ function finishHand() {
 }
 
 function scorePlayer(bid, taken, currentBags) {
+  const losses = [];
   if (bid === 0) {
     if (taken === 0) return { score: nilBonus, bags: currentBags };
     const totalBags = currentBags + taken;
     const penalties = Math.floor(totalBags / 5);
+    losses.push({ amount: Math.abs(nilPenalty), reason: "bidding 0" });
+    if (penalties > 0) losses.push({ amount: penalties * 50, reason: "bags" });
     return {
       score: nilPenalty - penalties * 50,
       bags: totalBags % 5,
+      losses,
     };
   }
-  if (taken < bid) return { score: -10 * bid, bags: currentBags };
+  if (taken < bid) {
+    losses.push({ amount: 10 * bid, reason: `bidding ${bid}` });
+    return { score: -10 * bid, bags: currentBags, losses };
+  }
   const overtricks = taken - bid;
   const totalBags = currentBags + overtricks;
   const penalties = Math.floor(totalBags / 5);
+  if (penalties > 0) losses.push({ amount: penalties * 50, reason: "bags" });
   return {
     score: 10 * bid + overtricks - penalties * 50,
     bags: totalBags % 5,
+    losses,
   };
 }
 
@@ -746,10 +759,13 @@ function isMyDraftTurn() {
 function renderSeats() {
   seats.forEach((seat) => {
     const bid = bidLabel(state.bids[seat]);
+    const handResult = handResultForSeat(seat);
     els.seats[seat].classList.toggle("active-seat", state.currentTurn === seat && state.phase !== "complete");
     els.seats[seat].innerHTML = `
       <div class="player-name">${seatNames[seat]}${seat === mySeat ? " (you)" : ""}</div>
       <div class="player-score"><span>Score</span><strong>${state.scores[seat]}</strong></div>
+      <div class="player-hand-score ${handResult ? scoreToneClass(handResult.score) : ""}"><span>Hand</span><strong>${handResult ? formatScore(handResult.score) : "-"}</strong></div>
+      ${handPenaltyMarkup(seat, handResult)}
       <div class="player-meta">${state.hands[seat].length} cards · ${state.discards.length} discarded</div>
       <div class="player-stats">
         <span>Bid ${bid}</span>
@@ -758,6 +774,22 @@ function renderSeats() {
       </div>
     `;
   });
+}
+
+function handResultForSeat(seat) {
+  if (state.handResults?.[seat]) return state.handResults[seat];
+  if (state.bids[seat] === null || state.bids[seat] === undefined) return null;
+  return scorePlayer(state.bids[seat], state.taken[seat], state.bags[seat]);
+}
+
+function handPenaltyMarkup(seat, result) {
+  const losses = result?.losses || [];
+  if (!losses.length) return "";
+  return `
+    <div class="player-hand-detail">
+      ${losses.map((loss) => `<span>-${loss.amount} - ${loss.reason}</span>`).join("")}
+    </div>
+  `;
 }
 
 function renderControls() {
@@ -936,6 +968,16 @@ function cardLabel(card) {
 function bidLabel(bid) {
   if (bid === null || bid === undefined) return "-";
   return bid === 0 ? "Nil" : bid;
+}
+
+function formatScore(score) {
+  return score > 0 ? `+${score}` : `${score}`;
+}
+
+function scoreToneClass(score) {
+  if (score < 0) return "negative-score";
+  if (score > 0) return "positive-score";
+  return "";
 }
 
 function cardMarkup(card) {
