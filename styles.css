@@ -199,7 +199,7 @@ input {
 .table-shell {
   position: relative;
   display: grid;
-  grid-template: auto / minmax(205px, 255px) minmax(330px, 640px) minmax(205px, 255px);
+  grid-template: auto / minmax(284px, 310px) minmax(300px, 620px) minmax(284px, 310px);
   gap: 0.75rem;
   align-items: center;
   justify-content: center;
@@ -360,7 +360,9 @@ input {
 }
 
 .new-total-label {
-  font-size: 0.62rem;
+  color: var(--ink);
+  font-size: 1.04rem;
+  font-weight: 900;
 }
 
 .player-hand-detail {
@@ -812,7 +814,7 @@ input {
   margin-top: 0.35rem;
 }
 
-@media (min-width: 900px) {
+@media (min-width: 920px) {
   .app {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -835,7 +837,7 @@ input {
   }
 }
 
-@media (max-width: 899px) {
+@media (max-width: 919px) {
   .topbar {
     align-items: stretch;
     flex-direction: column;
