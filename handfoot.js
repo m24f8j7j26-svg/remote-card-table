@@ -55,12 +55,48 @@ let connectionText = "Not connected";
 let pollFailures = 0;
 let selected = new Set();
 const savedSession = loadLocalSession();
-let state = savedSession?.state || createGame();
+let state = normalizeState(savedSession?.state);
+let serverWriteInFlight = false;
+let queuedServerState = null;
+let serverRetryTimer = null;
 let peer = null;
 let peerConn = null;
 
 function apiUrl(path) {
   return `${apiBaseUrl}${path}`;
+}
+
+function stateRevision(game = state) {
+  return Number.isFinite(game?.revision) ? game.revision : 0;
+}
+
+function normalizeState(game) {
+  if (!game) return createGame();
+  if (!game.game) game.game = "handfoot";
+  if (!Number.isFinite(game.revision)) game.revision = 0;
+  return game;
+}
+
+function bumpStateRevision() {
+  state.revision = stateRevision() + 1;
+}
+
+function shouldAcceptRemoteState(remoteState) {
+  return stateRevision(remoteState) > stateRevision();
+}
+
+function currentRoomCode() {
+  return els.roomInput.value.trim().toUpperCase();
+}
+
+function cloneState(game) {
+  return JSON.parse(JSON.stringify(game));
+}
+
+function newerState(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  return stateRevision(a) >= stateRevision(b) ? a : b;
 }
 
 function createDeck() {
@@ -92,6 +128,7 @@ function createGame(previous = null) {
   };
   return {
     game: "handfoot",
+    revision: previous ? stateRevision(previous) : 0,
     round,
     scores: previous ? previous.scores : { south: 0, north: 0 },
     stock: deck,
@@ -209,7 +246,7 @@ function wireHostPeerConnection(conn) {
   conn.on("data", (message) => {
     if (message.type === "requestState") sendPeerState(conn);
     if (message.type === "state") {
-      state = message.state;
+      state = normalizeState(message.state);
       render();
       sendPeerState();
     }
@@ -225,7 +262,7 @@ function wireGuestPeerConnection(conn) {
   });
   conn.on("data", (message) => {
     if (message.type === "state") {
-      state = message.state;
+      state = normalizeState(message.state);
       render();
     }
   });
@@ -270,7 +307,7 @@ async function joinRoom() {
     return;
   }
   const payload = await response.json();
-  state = payload.state;
+  state = normalizeState(payload.state);
   presence = payload.presence || {};
   setConnection("Connected");
   startPolling(room);
@@ -305,10 +342,15 @@ function startPolling(room) {
       const response = await fetch(apiUrl(`/api/rooms/${encodeURIComponent(room)}/state`));
       if (!response.ok) return;
       const payload = await response.json();
+      const remoteState = normalizeState(payload.state);
       pollFailures = 0;
-      state = payload.state;
       presence = payload.presence || presence;
       if (syncMode === "server" && role) connectionText = role === "host" ? "Room ready" : "Connected";
+      if (!shouldAcceptRemoteState(remoteState)) {
+        renderConnection();
+        return;
+      }
+      state = remoteState;
       render();
     } catch (error) {
       pollFailures += 1;
@@ -343,19 +385,52 @@ async function sendPresence(room) {
   }
 }
 
-async function broadcast() {
-  render();
+function broadcast() {
+  bumpStateRevision();
+  saveLocalSession();
   if (syncMode === "peer" && peerConn?.open) {
     sendPeerState();
+    render();
     return;
   }
-  const room = els.roomInput.value.trim().toUpperCase();
-  if (!room || syncMode !== "server" || !role) return;
-  await fetch(apiUrl(`/api/rooms/${encodeURIComponent(room)}/state`), {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ state }),
-  }).catch(() => setConnection("Relay update failed"));
+  if (role && syncMode === "server") putServerState();
+  render();
+}
+
+function putServerState() {
+  const room = currentRoomCode();
+  if (!room) return;
+  queuedServerState = cloneState(state);
+  flushQueuedServerState(room);
+}
+
+async function flushQueuedServerState(room = currentRoomCode()) {
+  if (serverWriteInFlight || !queuedServerState || !room) return;
+  clearTimeout(serverRetryTimer);
+  serverRetryTimer = null;
+  serverWriteInFlight = true;
+  const snapshot = queuedServerState;
+  queuedServerState = null;
+  try {
+    const response = await fetch(apiUrl(`/api/rooms/${encodeURIComponent(room)}/state`), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state: snapshot }),
+    });
+    if (!response.ok) throw new Error("Relay update failed");
+    pollFailures = 0;
+    if (connectionText === "Relay retrying") connectionText = role === "host" ? "Room ready" : "Connected";
+  } catch (error) {
+    queuedServerState = newerState(queuedServerState, snapshot);
+    setConnection("Relay retrying");
+    serverRetryTimer = setTimeout(() => {
+      serverRetryTimer = null;
+      flushQueuedServerState(room);
+    }, 900);
+  } finally {
+    serverWriteInFlight = false;
+    if (queuedServerState && !serverRetryTimer) flushQueuedServerState(room);
+  }
 }
 
 function setConnection(text) {
@@ -390,6 +465,9 @@ function clearRoomCode() {
   presenceTimer = null;
   presence = {};
   pollFailures = 0;
+  queuedServerState = null;
+  clearTimeout(serverRetryTimer);
+  serverRetryTimer = null;
   localStorage.removeItem(localSessionKey);
   peerConn?.close();
   peer?.destroy();
@@ -840,7 +918,9 @@ function confirmNewRound() {
 function confirmNewGame() {
   const ok = window.confirm("Start a new game? This will reset scores and the current round for both players.");
   if (!ok) return;
+  const previousRevision = stateRevision();
   state = createGame();
+  state.revision = previousRevision;
   selected.clear();
   broadcast();
 }
