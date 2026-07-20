@@ -248,60 +248,88 @@ input {
 }
 
 .player-name {
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 850;
 }
 
 .player-score-ledger {
   display: grid;
-  gap: 0.22rem;
   width: 100%;
 }
 
-.score-line {
-  display: flex;
+.score-ledger-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content max-content;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
+  column-gap: 0.5rem;
+  row-gap: 0.12rem;
   width: 100%;
 }
 
-.score-line span {
+.score-heading,
+.score-label {
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 850;
+  line-height: 1.05;
   text-transform: uppercase;
 }
 
-.score-line strong {
-  color: var(--ink);
-  font-size: 1rem;
-  font-weight: 900;
+.score-heading {
+  justify-self: end;
+  font-size: 0.62rem;
 }
 
-.hand-line strong {
+.score-label {
+  justify-self: start;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.score-value,
+.score-bags {
+  justify-self: end;
+  color: var(--ink);
+  font-size: 0.96rem;
+  font-weight: 900;
+  line-height: 1.08;
+  white-space: nowrap;
+}
+
+.score-bags {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.hand-value,
+.hand-bags {
   color: var(--gold);
 }
 
-.hand-line.negative-score strong {
+.hand-value.negative-score {
   color: #ffb6a8;
 }
 
-.new-total {
+.score-divider {
+  grid-column: 1 / -1;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
-  padding-top: 0.2rem;
+  margin-top: 0.1rem;
 }
 
-.new-total strong {
+.new-total-value,
+.new-total-bags {
   color: var(--gold);
-  font-size: 1.25rem;
+}
+
+.new-total-value {
+  font-size: 1.08rem;
 }
 
 .player-hand-detail {
+  grid-column: 2 / -1;
   display: grid;
   gap: 0.12rem;
-  justify-items: end;
-  width: 100%;
+  justify-items: start;
   color: #ffb6a8;
   font-size: 0.72rem;
   font-weight: 850;
@@ -309,6 +337,7 @@ input {
 }
 
 .score-stats {
+  grid-column: 1 / -1;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.25rem;

@@ -817,16 +817,29 @@ function scoreLedgerMarkup(seat, result) {
   const handBags = result ? formatBags(result.handBags) : "0 bags";
   const newTotal = result ? result.newTotal : state.scores[seat];
   const newBags = result ? result.newBags : state.bags[seat];
+  const handTone = result ? scoreToneClass(result.score) : "";
   return `
     <div class="player-score-ledger">
-      <div class="score-line"><span>Total Was</span><strong>${totalWas}, ${formatBags(bagsWas)}</strong></div>
+      <div class="score-ledger-grid">
+        <span class="score-heading" aria-hidden="true"></span>
+        <span class="score-heading">Score</span>
+        <span class="score-heading">Bags</span>
+        <span class="score-label">Total Was</span>
+        <strong class="score-value">${totalWas}</strong>
+        <strong class="score-bags">${formatBags(bagsWas)}</strong>
       <div class="score-stats">
         <span>Bid ${bid}</span>
         <span>Took ${state.taken[seat]}</span>
       </div>
-      ${handPenaltyMarkup(result)}
-      <div class="score-line hand-line ${result ? scoreToneClass(result.score) : ""}"><span>Hand</span><strong>${handScore}, ${handBags}</strong></div>
-      <div class="score-line new-total"><span>New Total</span><strong>${newTotal}, ${formatBags(newBags)}</strong></div>
+        <span class="score-label">Hand</span>
+        <strong class="score-value hand-value ${handTone}">${handScore}</strong>
+        <strong class="score-bags hand-bags">${handBags}</strong>
+        ${handPenaltyMarkup(result)}
+        <span class="score-divider" aria-hidden="true"></span>
+        <span class="score-label new-total-label">New Total</span>
+        <strong class="score-value new-total-value">${newTotal}</strong>
+        <strong class="score-bags new-total-bags">${formatBags(newBags)}</strong>
+      </div>
     </div>
   `;
 }
