@@ -639,10 +639,6 @@ function renderControls() {
   els.actionControls.innerHTML = "";
   if (!mySeat) return;
   if (state.phase === "draft" && state.currentTurn === mySeat && currentDraftCard()) {
-    const preview = document.createElement("div");
-    preview.className = `draft-card ${cardSuitClass(currentDraftCard())}`;
-    preview.innerHTML = cardMarkup(currentDraftCard());
-    els.actionControls.append(preview);
     ["keep", "discard"].forEach((choice) => {
       const button = document.createElement("button");
       button.type = "button";
@@ -719,6 +715,15 @@ function createStockPile() {
   const pile = document.createElement("div");
   pile.className = "table-pile stock-pile";
   pile.title = `${state.deck.length} cards in the stock`;
+  if (state.phase === "draft" && mySeat === state.currentTurn && currentDraftCard()) {
+    const card = document.createElement("div");
+    card.className = `played-card table-pile-card stock-top-card ${cardSuitClass(currentDraftCard())}`;
+    card.title = `Your draft card: ${cardLabel(currentDraftCard())}`;
+    card.innerHTML = cardMarkup(currentDraftCard());
+    card.append(createPileCount(state.deck.length));
+    pile.append(card);
+    return pile;
+  }
   pile.append(createCardBack("stock-card-back", state.deck.length));
   return pile;
 }
