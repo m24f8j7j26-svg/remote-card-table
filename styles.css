@@ -144,8 +144,7 @@ h1 {
 
 .join-field span,
 .label,
-.scoreboard span,
-.hand-header span {
+.scoreboard span {
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 800;
@@ -248,7 +247,7 @@ input {
 }
 
 .player-name {
-  font-size: 1.05rem;
+  font-size: 1.12rem;
   font-weight: 850;
   text-align: center;
 }
@@ -274,14 +273,14 @@ input {
 .score-ledger-header,
 .score-label {
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   font-weight: 850;
   line-height: 1.05;
   text-transform: uppercase;
 }
 
 .score-ledger-header {
-  font-size: 0.62rem;
+  font-size: 0.6rem;
 }
 
 .score-ledger-header span:first-child {
@@ -306,7 +305,7 @@ input {
 }
 
 .score-label-detail {
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   line-height: 1;
 }
 
@@ -314,7 +313,7 @@ input {
 .score-bags {
   justify-self: center;
   color: var(--ink);
-  font-size: 1.04rem;
+  font-size: 1.08rem;
   font-weight: 900;
   line-height: 1.08;
   text-align: center;
@@ -332,7 +331,7 @@ input {
 .hand-value,
 .net-value {
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   font-weight: 850;
 }
 
@@ -361,13 +360,13 @@ input {
 
 .new-total-label {
   color: var(--ink);
-  font-size: 1.04rem;
+  font-size: 1.08rem;
   font-weight: 900;
 }
 
 .player-hand-detail {
   color: #ffb6a8;
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 850;
   line-height: 1.15;
 }
@@ -385,7 +384,7 @@ input {
 .score-stats {
   margin: -0.03rem 0 0.05rem;
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: 0.66rem;
   font-weight: 800;
   line-height: 1.1;
 }
@@ -638,13 +637,6 @@ input {
 
 .hand-panel {
   margin-top: 0.5rem;
-}
-
-.hand-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.3rem;
 }
 
 .hand {

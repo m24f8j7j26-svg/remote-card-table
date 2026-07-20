@@ -755,7 +755,7 @@ function render() {
   renderConnection();
   els.seatStatus.textContent = mySeat ? seatNames[mySeat] : "Choose Host or Join";
   els.handNumber.textContent = state.handNumber;
-  els.turnStatus.textContent = turnLabel();
+  if (els.turnStatus) els.turnStatus.textContent = turnLabel();
   renderSeats();
   renderControls();
   renderTrick();
