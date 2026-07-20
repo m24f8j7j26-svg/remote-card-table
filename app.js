@@ -65,9 +65,16 @@ function shuffle(deck) {
   return cards;
 }
 
+function startingSeat(previous = null) {
+  if (!previous) return seats[Math.floor(Math.random() * seats.length)];
+  return nextSeat(previous.firstSeat || (previous.handNumber % 2 === 0 ? "north" : "south"));
+}
+
 function createGame(previous = null) {
   const handNumber = previous ? previous.handNumber + 1 : 1;
+  const firstSeat = startingSeat(previous);
   return {
+    firstSeat,
     handNumber,
     scores: previous ? previous.scores : { south: 0, north: 0 },
     bags: previous ? previous.bags : { south: 0, north: 0 },
@@ -76,13 +83,13 @@ function createGame(previous = null) {
     discards: [],
     bids: { south: null, north: null },
     taken: { south: 0, north: 0 },
-    currentTurn: "south",
+    currentTurn: firstSeat,
     phase: "draft",
     trick: [],
     spadesBroken: false,
     lastDraft: null,
     lastTrick: null,
-    message: "South drafts first. Look at the card, then keep it or discard it.",
+    message: `${seatNames[firstSeat]} drafts first. Look at the card, then keep it or discard it.`,
   };
 }
 
@@ -412,8 +419,8 @@ function draftCard(seat, choice) {
   if (state.deck.length === 0) {
     seats.forEach((s) => state.hands[s].sort(compareCards));
     state.phase = "bidding";
-    state.currentTurn = "south";
-    state.message = "Draft complete. South bids first.";
+    state.currentTurn = state.firstSeat || "south";
+    state.message = `Draft complete. ${seatNames[state.currentTurn]} bids first.`;
     return;
   }
 
@@ -424,14 +431,14 @@ function draftCard(seat, choice) {
 function placeBid(seat, bid) {
   if (state.phase !== "bidding" || state.currentTurn !== seat || state.bids[seat] !== null) return;
   state.bids[seat] = bid;
-  const nextHumanNeedsBid = seats.find((s) => state.bids[s] === null);
+  const nextHumanNeedsBid = state.bids[nextSeat(seat)] === null ? nextSeat(seat) : null;
   if (nextHumanNeedsBid) {
     state.currentTurn = nextHumanNeedsBid;
     state.message = `${seatNames[nextHumanNeedsBid]} needs to bid.`;
   } else {
     state.phase = "playing";
-    state.currentTurn = "south";
-    state.message = "Bidding complete. South leads the first trick.";
+    state.currentTurn = state.firstSeat || "south";
+    state.message = `Bidding complete. ${seatNames[state.currentTurn]} leads the first trick.`;
   }
 }
 
@@ -550,7 +557,10 @@ function messageForViewer() {
   }
   if (state.phase === "draft" && state.lastDraft) {
     const verb = state.lastDraft.choice === "keep" ? "kept the first card" : "discarded the first card";
-    return `${seatNames[state.lastDraft.seat]} ${verb}. ${cardLabel(state.lastDraft.discarded)} went to the discard pile.`;
+    if (state.lastDraft.seat === mySeat) {
+      return `${seatNames[state.lastDraft.seat]} ${verb}. Your discard was ${cardLabel(state.lastDraft.discarded)}.`;
+    }
+    return `${seatNames[state.lastDraft.seat]} ${verb}. The discard is covered.`;
   }
   return state.message;
 }
@@ -606,6 +616,10 @@ function renderControls() {
 
 function renderTrick() {
   els.trickArea.innerHTML = "";
+  if (state.phase === "draft") {
+    renderDraftPiles();
+    return;
+  }
   const showingLastTrick = state.trick.length === 0 && state.lastTrick?.plays?.length;
   const plays = showingLastTrick ? state.lastTrick.plays : state.trick;
   els.table.classList.toggle("has-table-cards", plays.length > 0);
@@ -636,6 +650,63 @@ function renderTrick() {
     tableCards.append(slot);
   });
   els.trickArea.append(tableCards);
+}
+
+function renderDraftPiles() {
+  els.table.classList.add("has-table-cards");
+  const piles = document.createElement("div");
+  piles.className = "table-piles";
+  piles.append(createStockPile(), createDiscardPile());
+  els.trickArea.append(piles);
+}
+
+function createStockPile() {
+  const pile = document.createElement("div");
+  pile.className = "table-pile stock-pile";
+  pile.title = `${state.deck.length} cards in the stock`;
+  pile.append(createCardBack("stock-card-back", state.deck.length));
+  return pile;
+}
+
+function createDiscardPile() {
+  const pile = document.createElement("div");
+  pile.className = "table-pile discard-pile";
+  pile.title = `${state.discards.length} cards in the discard pile`;
+  if (!state.discards.length) {
+    pile.classList.add("empty-pile");
+    const empty = document.createElement("div");
+    empty.className = "table-pile-card empty-discard-slot";
+    pile.append(empty);
+    return pile;
+  }
+
+  const canSeeDiscard = state.lastDraft?.seat === mySeat;
+  if (canSeeDiscard) {
+    const card = document.createElement("div");
+    card.className = `played-card table-pile-card discard-pile-card ${cardSuitClass(state.lastDraft.discarded)}`;
+    card.title = `Your discard: ${cardLabel(state.lastDraft.discarded)}`;
+    card.innerHTML = cardMarkup(state.lastDraft.discarded);
+    card.append(createPileCount(state.discards.length));
+    pile.append(card);
+    return pile;
+  }
+
+  pile.append(createCardBack("covered-discard-card", state.discards.length));
+  return pile;
+}
+
+function createCardBack(extraClass, count) {
+  const back = document.createElement("div");
+  back.className = `table-pile-card card-back ${extraClass}`;
+  back.append(createPileCount(count));
+  return back;
+}
+
+function createPileCount(count) {
+  const badge = document.createElement("span");
+  badge.className = "pile-count";
+  badge.textContent = count;
+  return badge;
 }
 
 function renderHand() {
