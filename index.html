@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Remote Spades Table</title>
     <link rel="preconnect" href="https://unpkg.com" />
-    <link rel="stylesheet" href="styles.css?v=20260720c" />
+    <link rel="stylesheet" href="styles.css?v=20260720d" />
   </head>
   <body>
     <main class="app">
@@ -13,7 +13,7 @@
         <div>
           <p class="eyebrow">Remote Card Table</p>
           <h1>Two-player table</h1>
-          <p class="version-note">Spades table draft v20260720c</p>
+          <p class="version-note">Spades clean table v20260720d</p>
         </div>
         <div class="room-panel">
           <a class="nav-button" href="handfoot.html">Hand & Foot</a>
@@ -44,19 +44,9 @@
         </div>
       </section>
 
-      <section class="scoreboard" aria-label="Scoreboard">
-        <div>
-          <span>South</span>
-          <strong id="southScore">0</strong>
-        </div>
-        <div>
-          <span>North</span>
-          <strong id="northScore">0</strong>
-        </div>
-        <div>
-          <span>Hand</span>
-          <strong id="handNumber">1</strong>
-        </div>
+      <section class="scoreboard table-actions" aria-label="Hand controls">
+        <button id="newHandBtn" type="button">New hand</button>
+        <button id="newGameBtn" type="button">New game</button>
       </section>
 
       <section class="table-shell">
@@ -64,15 +54,13 @@
         <div class="player seat-south" id="seatSouth"></div>
 
         <div class="table">
+          <div class="table-hand-badge">Hand <strong id="handNumber">1</strong></div>
           <div class="trick-area" id="trickArea"></div>
-          <div class="message" id="gameMessage">Host a room, then share the room code with your partner.</div>
         </div>
       </section>
 
       <section class="action-bar">
         <div class="bid-controls" id="bidControls" aria-label="Game controls"></div>
-        <button id="newHandBtn" type="button">New hand</button>
-        <button id="newGameBtn" type="button">New game</button>
       </section>
 
       <section class="hand-panel" aria-label="Your hand">
@@ -86,6 +74,6 @@
     </main>
 
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-    <script src="app.js?v=20260720c"></script>
+    <script src="app.js?v=20260720d"></script>
   </body>
 </html>

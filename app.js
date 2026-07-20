@@ -20,12 +20,10 @@ const els = {
   connectionStatus: document.querySelector("#connectionStatus"),
   seatStatus: document.querySelector("#seatStatus"),
   roomStatus: document.querySelector("#roomStatus"),
-  southScore: document.querySelector("#southScore"),
-  northScore: document.querySelector("#northScore"),
   handNumber: document.querySelector("#handNumber"),
   trickArea: document.querySelector("#trickArea"),
   table: document.querySelector(".table"),
-  gameMessage: document.querySelector("#gameMessage"),
+  actionBar: document.querySelector(".action-bar"),
   actionControls: document.querySelector("#bidControls"),
   newHandBtn: document.querySelector("#newHandBtn"),
   newGameBtn: document.querySelector("#newGameBtn"),
@@ -723,29 +721,12 @@ function render() {
   els.roomStatus.textContent = els.roomInput.value.trim().toUpperCase() || "-";
   renderConnection();
   els.seatStatus.textContent = mySeat ? seatNames[mySeat] : "Choose Host or Join";
-  els.southScore.textContent = state.scores.south;
-  els.northScore.textContent = state.scores.north;
   els.handNumber.textContent = state.handNumber;
-  els.gameMessage.textContent = messageForViewer();
   els.turnStatus.textContent = turnLabel();
   renderSeats();
   renderControls();
   renderTrick();
   renderHand();
-}
-
-function messageForViewer() {
-  if (state.phase === "draft" && mySeat === state.currentTurn && currentDraftCard()) {
-    return `Your draft card is ${cardLabel(currentDraftCard())}. Click the card to keep it, or click the discard pile to discard it.`;
-  }
-  if (state.phase === "draft" && state.lastDraft) {
-    const verb = state.lastDraft.choice === "keep" ? "kept the first card" : "discarded the first card";
-    if (state.lastDraft.seat === mySeat) {
-      return `${seatNames[state.lastDraft.seat]} ${verb}. Your discard was ${cardLabel(state.lastDraft.discarded)}.`;
-    }
-    return `${seatNames[state.lastDraft.seat]} ${verb}. The discard is covered.`;
-  }
-  return state.message;
 }
 
 function turnLabel() {
@@ -768,14 +749,20 @@ function renderSeats() {
     els.seats[seat].classList.toggle("active-seat", state.currentTurn === seat && state.phase !== "complete");
     els.seats[seat].innerHTML = `
       <div class="player-name">${seatNames[seat]}${seat === mySeat ? " (you)" : ""}</div>
+      <div class="player-score"><span>Score</span><strong>${state.scores[seat]}</strong></div>
       <div class="player-meta">${state.hands[seat].length} cards · ${state.discards.length} discarded</div>
-      <div class="player-meta">Bid ${bid} · Took ${state.taken[seat]} · Bags ${state.bags[seat]}</div>
+      <div class="player-stats">
+        <span>Bid ${bid}</span>
+        <span>Took ${state.taken[seat]}</span>
+        <span>Bags ${state.bags[seat]}</span>
+      </div>
     `;
   });
 }
 
 function renderControls() {
   els.actionControls.innerHTML = "";
+  els.actionBar.hidden = true;
   if (!mySeat) return;
   if (state.phase === "bidding" && state.currentTurn === mySeat && state.bids[mySeat] === null) {
     for (let bid = 0; bid <= 13; bid += 1) {
@@ -793,6 +780,7 @@ function renderControls() {
     button.addEventListener("click", () => submitAction({ kind: "nextTrick", seat: mySeat }));
     els.actionControls.append(button);
   }
+  els.actionBar.hidden = els.actionControls.children.length === 0;
 }
 
 function renderTrick() {
