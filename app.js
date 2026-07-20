@@ -787,7 +787,7 @@ function handPenaltyMarkup(seat, result) {
   if (!losses.length) return "";
   return `
     <div class="player-hand-detail">
-      ${losses.map((loss) => `<span>-${loss.amount} - ${loss.reason}</span>`).join("")}
+      ${losses.map((loss) => `<span>-${loss.amount}</span>`).join("")}
     </div>
   `;
 }
