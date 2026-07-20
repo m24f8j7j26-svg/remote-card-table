@@ -845,13 +845,13 @@ function scoreLedgerMarkup(seat, result) {
         <span>Bags ${handBags}</span>
       </div>
       <div class="score-ledger-row">
-        <span class="score-label">Hand</span>
+        <span class="score-label compound-score-label"><span>Hand</span><span class="score-label-detail">Earned</span></span>
         <strong class="score-value hand-value ${handTone}">${handTotal}</strong>
         <span class="score-empty" aria-hidden="true"></span>
       </div>
       ${handPenaltyMarkup(result)}
       <div class="score-ledger-row">
-        <span class="score-label net-label">Net</span>
+        <span class="score-label compound-score-label net-label"><span>Hand</span><span class="score-label-detail">Net</span></span>
         <strong class="score-value net-value ${netTone}">${netScore}</strong>
         <span class="score-empty" aria-hidden="true"></span>
       </div>

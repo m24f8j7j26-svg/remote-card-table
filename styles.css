@@ -256,15 +256,16 @@ input {
 .player-score-ledger {
   display: grid;
   gap: 0.18rem;
-  width: min(100%, 23rem);
+  width: fit-content;
+  max-width: 100%;
   margin: 0 auto;
 }
 
 .score-ledger-row {
   display: grid;
-  grid-template-columns: minmax(6.4rem, 1fr) 4.75rem 3.4rem;
+  grid-template-columns: 5.8rem 4.75rem 3.4rem;
   align-items: baseline;
-  column-gap: 0.65rem;
+  column-gap: 0.35rem;
   width: 100%;
   font-variant-numeric: tabular-nums;
   text-align: left;
@@ -296,6 +297,17 @@ input {
   justify-self: start;
   min-width: 0;
   white-space: nowrap;
+}
+
+.compound-score-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+}
+
+.score-label-detail {
+  font-size: 0.72rem;
+  line-height: 1;
 }
 
 .score-value,
@@ -337,8 +349,8 @@ input {
   color: var(--gold);
 }
 
-.new-total-value {
-  font-size: 1.12rem;
+.new-total-label {
+  font-size: 0.62rem;
 }
 
 .player-hand-detail {
