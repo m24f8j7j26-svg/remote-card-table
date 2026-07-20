@@ -942,6 +942,16 @@ function cardMarkup(card) {
   return `<span class="rank">${card.rank}</span><span class="suit">${suitSymbols[card.suit]}</span>`;
 }
 
+function confirmNewHand() {
+  const ok = window.confirm("Start a new hand? This will end the current hand for both players.");
+  if (ok) submitAction({ kind: "newHand" });
+}
+
+function confirmNewGame() {
+  const ok = window.confirm("Start a new game? This will reset the scores, bags, and current hand for both players.");
+  if (ok) submitAction({ kind: "newGame" });
+}
+
 els.hostBtn.addEventListener("click", hostRoom);
 els.joinBtn.addEventListener("click", joinRoom);
 els.clearRoomBtn.addEventListener("click", clearRoomCode);
@@ -954,8 +964,8 @@ els.copyBtn.addEventListener("click", async () => {
     els.copyBtn.textContent = "Copy code";
   }, 1200);
 });
-els.newHandBtn.addEventListener("click", () => submitAction({ kind: "newHand" }));
-els.newGameBtn.addEventListener("click", () => submitAction({ kind: "newGame" }));
+els.newHandBtn.addEventListener("click", confirmNewHand);
+els.newGameBtn.addEventListener("click", confirmNewGame);
 els.roomInput.addEventListener("input", () => {
   els.roomInput.value = els.roomInput.value.toUpperCase();
   render();
