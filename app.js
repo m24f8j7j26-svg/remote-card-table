@@ -50,6 +50,24 @@ function apiUrl(path) {
   return `${apiBaseUrl}${path}`;
 }
 
+function stateRevision(game = state) {
+  return Number.isFinite(game?.revision) ? game.revision : 0;
+}
+
+function normalizeState(game) {
+  if (!game) return createGame();
+  if (!Number.isFinite(game.revision)) game.revision = 0;
+  return game;
+}
+
+function bumpStateRevision() {
+  state.revision = stateRevision() + 1;
+}
+
+function shouldAcceptRemoteState(remoteState) {
+  return stateRevision(remoteState) >= stateRevision();
+}
+
 function createDeck() {
   return Object.keys(suitSymbols).flatMap((suit) =>
     Object.keys(rankOrder).map((rank) => ({ suit, rank, id: `${rank}${suit}` }))
@@ -74,6 +92,7 @@ function createGame(previous = null) {
   const handNumber = previous ? previous.handNumber + 1 : 1;
   const firstSeat = startingSeat(previous);
   return {
+    revision: previous ? stateRevision(previous) : 0,
     firstSeat,
     handNumber,
     scores: previous ? previous.scores : { south: 0, north: 0 },
@@ -209,7 +228,7 @@ function wireGuestPeerConnection(conn) {
   });
   conn.on("data", (message) => {
     if (message.type === "state") {
-      state = message.state;
+      state = normalizeState(message.state);
       render();
     }
   });
@@ -258,7 +277,7 @@ async function joinServerRoom() {
     const response = await fetch(apiUrl(`/api/rooms/${encodeURIComponent(room)}/state`));
     if (!response.ok) throw new Error("Room not found");
     const payload = await response.json();
-    state = payload.state;
+    state = normalizeState(payload.state);
     presence = payload.presence || {};
     setConnection("Connected");
     startStatePolling(room);
@@ -326,15 +345,25 @@ function submitAction(action) {
 }
 
 function applyAction(action) {
-  if (action.kind === "draft") draftCard(action.seat, action.choice);
-  if (action.kind === "bid") placeBid(action.seat, action.bid);
-  if (action.kind === "play") playCard(action.seat, action.cardId);
+  let changed = false;
+  if (action.kind === "draft") changed = draftCard(action.seat, action.choice);
+  if (action.kind === "bid") changed = placeBid(action.seat, action.bid);
+  if (action.kind === "play") changed = playCard(action.seat, action.cardId);
   if (action.kind === "newHand") {
     state = createGame(state);
+    changed = true;
   }
   if (action.kind === "newGame") {
+    const previousRevision = stateRevision();
     state = createGame();
+    state.revision = previousRevision;
+    changed = true;
   }
+  if (!changed) {
+    render();
+    return;
+  }
+  bumpStateRevision();
   broadcastState();
 }
 
@@ -368,10 +397,15 @@ function startStatePolling(room) {
       const response = await fetch(apiUrl(`/api/rooms/${encodeURIComponent(room)}/state`));
       if (!response.ok) return;
       const payload = await response.json();
+      const remoteState = normalizeState(payload.state);
       pollFailures = 0;
-      state = payload.state;
       presence = payload.presence || presence;
       if (syncMode === "server" && role) connectionText = role === "host" ? "Room ready" : "Connected";
+      if (!shouldAcceptRemoteState(remoteState)) {
+        renderConnection();
+        return;
+      }
+      state = remoteState;
       render();
     } catch (error) {
       pollFailures += 1;
@@ -407,7 +441,7 @@ async function sendPresence(room) {
 }
 
 function draftCard(seat, choice) {
-  if (state.phase !== "draft" || state.currentTurn !== seat || state.deck.length < 2) return;
+  if (state.phase !== "draft" || state.currentTurn !== seat || state.deck.length < 2) return false;
   const first = state.deck.shift();
   const second = state.deck.shift();
   const kept = choice === "keep" ? first : second;
@@ -421,15 +455,16 @@ function draftCard(seat, choice) {
     state.phase = "bidding";
     state.currentTurn = state.firstSeat || "south";
     state.message = `Draft complete. ${seatNames[state.currentTurn]} bids first.`;
-    return;
+    return true;
   }
 
   state.currentTurn = nextSeat(seat);
   state.message = `${seatNames[state.currentTurn]} drafts next.`;
+  return true;
 }
 
 function placeBid(seat, bid) {
-  if (state.phase !== "bidding" || state.currentTurn !== seat || state.bids[seat] !== null) return;
+  if (state.phase !== "bidding" || state.currentTurn !== seat || state.bids[seat] !== null) return false;
   state.bids[seat] = bid;
   const nextHumanNeedsBid = state.bids[nextSeat(seat)] === null ? nextSeat(seat) : null;
   if (nextHumanNeedsBid) {
@@ -440,13 +475,14 @@ function placeBid(seat, bid) {
     state.currentTurn = state.firstSeat || "south";
     state.message = `Bidding complete. ${seatNames[state.currentTurn]} leads the first trick.`;
   }
+  return true;
 }
 
 function playCard(seat, cardId) {
-  if (state.phase !== "playing" || state.currentTurn !== seat) return;
+  if (state.phase !== "playing" || state.currentTurn !== seat) return false;
   const hand = state.hands[seat];
   const card = hand.find((item) => item.id === cardId);
-  if (!card || !isLegalPlay(seat, card)) return;
+  if (!card || !isLegalPlay(seat, card)) return false;
   state.hands[seat] = hand.filter((item) => item.id !== cardId);
   state.trick.push({ seat, card });
   if (card.suit === "S") state.spadesBroken = true;
@@ -456,6 +492,7 @@ function playCard(seat, cardId) {
     state.currentTurn = nextSeat(seat);
     state.message = `${seatNames[state.currentTurn]} to play.`;
   }
+  return true;
 }
 
 function finishTrick() {
