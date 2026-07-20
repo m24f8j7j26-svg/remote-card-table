@@ -306,11 +306,6 @@ input {
   line-height: 1.15;
 }
 
-.player-meta {
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
 .player-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

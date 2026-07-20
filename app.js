@@ -766,7 +766,6 @@ function renderSeats() {
       <div class="player-score"><span>Score</span><strong>${state.scores[seat]}</strong></div>
       <div class="player-hand-score ${handResult ? scoreToneClass(handResult.score) : ""}"><span>Hand</span><strong>${handResult ? formatScore(handResult.score) : "-"}</strong></div>
       ${handPenaltyMarkup(seat, handResult)}
-      <div class="player-meta">${state.hands[seat].length} cards · ${state.discards.length} discarded</div>
       <div class="player-stats">
         <span>Bid ${bid}</span>
         <span>Took ${state.taken[seat]}</span>
@@ -787,7 +786,7 @@ function handPenaltyMarkup(seat, result) {
   if (!losses.length) return "";
   return `
     <div class="player-hand-detail">
-      ${losses.map((loss) => `<span>-${loss.amount}</span>`).join("")}
+      ${losses.map((loss) => `<span>-${loss.amount}${loss.reason === "bags" ? " (Bags)" : ""}</span>`).join("")}
     </div>
   `;
 }
