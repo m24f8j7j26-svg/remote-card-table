@@ -4,6 +4,8 @@ const suitOrder = { C: 0, D: 1, H: 2, S: 3 };
 const rankOrder = { 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, T: 10, J: 11, Q: 12, K: 13, A: 14 };
 const seatNames = { north: "North", south: "South" };
 const humanSeats = { host: "south", guest: "north" };
+const nilBonus = 100;
+const nilPenalty = -100;
 const remoteRelayOrigin = "https://cards.boyzofsummerpics.com";
 const apiBaseUrl =
   typeof location !== "undefined" && location.hostname.endsWith("github.io") ? remoteRelayOrigin : "";
@@ -529,6 +531,15 @@ function finishHand() {
 }
 
 function scorePlayer(bid, taken, currentBags) {
+  if (bid === 0) {
+    if (taken === 0) return { score: nilBonus, bags: currentBags };
+    const totalBags = currentBags + taken;
+    const penalties = Math.floor(totalBags / 5);
+    return {
+      score: nilPenalty - penalties * 50,
+      bags: totalBags % 5,
+    };
+  }
   if (taken < bid) return { score: -10 * bid, bags: currentBags };
   const overtricks = taken - bid;
   const totalBags = currentBags + overtricks;
@@ -625,7 +636,7 @@ function currentDraftCard() {
 
 function renderSeats() {
   seats.forEach((seat) => {
-    const bid = state.bids[seat] ?? "-";
+    const bid = bidLabel(state.bids[seat]);
     els.seats[seat].classList.toggle("active-seat", state.currentTurn === seat && state.phase !== "complete");
     els.seats[seat].innerHTML = `
       <div class="player-name">${seatNames[seat]}${seat === mySeat ? " (you)" : ""}</div>
@@ -651,7 +662,7 @@ function renderControls() {
     for (let bid = 0; bid <= 13; bid += 1) {
       const button = document.createElement("button");
       button.type = "button";
-      button.textContent = bid;
+      button.textContent = bidLabel(bid);
       button.addEventListener("click", () => submitAction({ kind: "bid", seat: mySeat, bid }));
       els.actionControls.append(button);
     }
@@ -794,6 +805,11 @@ function cardSuitClass(card) {
 
 function cardLabel(card) {
   return `${card.rank}${suitSymbols[card.suit]}`;
+}
+
+function bidLabel(bid) {
+  if (bid === null || bid === undefined) return "-";
+  return bid === 0 ? "Nil" : bid;
 }
 
 function cardMarkup(card) {
