@@ -814,7 +814,7 @@ function scoreLedgerMarkup(seat, result) {
   const totalWas = result ? result.totalWas : state.scores[seat];
   const bagsWas = result ? result.bagsWas : state.bags[seat];
   const handScore = result ? formatScore(result.score) : "-";
-  const handBags = result ? formatBags(result.handBags) : "0 bags";
+  const handBags = result ? result.handBags : 0;
   const newTotal = result ? result.newTotal : state.scores[seat];
   const newBags = result ? result.newBags : state.bags[seat];
   const handTone = result ? scoreToneClass(result.score) : "";
@@ -826,19 +826,19 @@ function scoreLedgerMarkup(seat, result) {
         <span class="score-heading">Bags</span>
         <span class="score-label">Total Was</span>
         <strong class="score-value">${totalWas}</strong>
-        <strong class="score-bags">${formatBags(bagsWas)}</strong>
-      <div class="score-stats">
-        <span>Bid ${bid}</span>
-        <span>Took ${state.taken[seat]}</span>
-      </div>
+        <strong class="score-bags" aria-label="${formatBags(bagsWas)}">${bagsWas}</strong>
+        <div class="score-stats">
+          <span>Bid ${bid}</span>
+          <span>Took ${state.taken[seat]}</span>
+        </div>
         <span class="score-label">Hand</span>
         <strong class="score-value hand-value ${handTone}">${handScore}</strong>
-        <strong class="score-bags hand-bags">${handBags}</strong>
+        <strong class="score-bags hand-bags" aria-label="${formatBags(handBags)}">${handBags}</strong>
         ${handPenaltyMarkup(result)}
         <span class="score-divider" aria-hidden="true"></span>
         <span class="score-label new-total-label">New Total</span>
         <strong class="score-value new-total-value">${newTotal}</strong>
-        <strong class="score-bags new-total-bags">${formatBags(newBags)}</strong>
+        <strong class="score-bags new-total-bags" aria-label="${formatBags(newBags)}">${newBags}</strong>
       </div>
     </div>
   `;
