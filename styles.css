@@ -308,7 +308,7 @@ input {
   line-height: 1.15;
 }
 
-.player-stats {
+.score-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.25rem;
@@ -318,7 +318,7 @@ input {
   font-weight: 800;
 }
 
-.player-stats span {
+.score-stats span {
   min-width: 0;
   overflow-wrap: anywhere;
 }

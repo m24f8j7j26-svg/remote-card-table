@@ -766,17 +766,11 @@ function isMyDraftTurn() {
 
 function renderSeats() {
   seats.forEach((seat) => {
-    const bid = bidLabel(state.bids[seat]);
     const handResult = handResultForSeat(seat);
     els.seats[seat].classList.toggle("active-seat", state.currentTurn === seat && state.phase !== "complete");
     els.seats[seat].innerHTML = `
       <div class="player-name">${seatNames[seat]}${seat === mySeat ? " (you)" : ""}</div>
       ${scoreLedgerMarkup(seat, handResult)}
-      <div class="player-stats">
-        <span>Bid ${bid}</span>
-        <span>Took ${state.taken[seat]}</span>
-        <span>Bags ${state.bags[seat]}</span>
-      </div>
     `;
   });
 }
@@ -801,12 +795,18 @@ function normalizeHandResult(result, currentTotal) {
 }
 
 function scoreLedgerMarkup(seat, result) {
+  const bid = bidLabel(state.bids[seat]);
   const totalWas = result ? result.totalWas : state.scores[seat];
   const handScore = result ? formatScore(result.score) : "-";
   const newTotal = result ? result.newTotal : state.scores[seat];
   return `
     <div class="player-score-ledger">
       <div class="score-line"><span>Total Was</span><strong>${totalWas}</strong></div>
+      <div class="score-stats">
+        <span>Bid ${bid}</span>
+        <span>Took ${state.taken[seat]}</span>
+        <span>Bags ${state.bags[seat]}</span>
+      </div>
       ${handPenaltyMarkup(result)}
       <div class="score-line hand-line ${result ? scoreToneClass(result.score) : ""}"><span>Hand</span><strong>${handScore}</strong></div>
       <div class="score-line new-total"><span>New Total</span><strong>${newTotal}</strong></div>
