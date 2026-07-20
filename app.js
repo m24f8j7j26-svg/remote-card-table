@@ -839,7 +839,7 @@ function scoreLedgerMarkup(seat, result) {
         <strong class="score-value">${totalWas}</strong>
         <strong class="score-bags" aria-label="${formatBags(bagsWas)}">${bagsWas}</strong>
       </div>
-      <div class="score-stats">
+      <div class="score-ledger-row score-stats">
         <span>Bid ${bid}</span>
         <span>Took ${state.taken[seat]}</span>
         <span>Bags ${handBags}</span>
