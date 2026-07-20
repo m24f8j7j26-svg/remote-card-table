@@ -82,7 +82,9 @@ function bumpStateRevision() {
 }
 
 function shouldAcceptRemoteState(remoteState) {
-  return stateRevision(remoteState) > stateRevision();
+  if (stateRevision(remoteState) <= stateRevision()) return false;
+  if (opponentUpdateChangesMyCards(remoteState)) return false;
+  return true;
 }
 
 function currentRoomCode() {
@@ -97,6 +99,21 @@ function newerState(a, b) {
   if (!a) return b;
   if (!b) return a;
   return stateRevision(a) >= stateRevision(b) ? a : b;
+}
+
+function opponentUpdateChangesMyCards(remoteState) {
+  if (!mySeat || remoteState.currentTurn === mySeat || state.wentOut || remoteState.wentOut) return false;
+  return playerCardsSignature(remoteState, mySeat) !== playerCardsSignature(state, mySeat);
+}
+
+function playerCardsSignature(game, seat) {
+  const player = game?.players?.[seat];
+  if (!player) return "";
+  return `${player.active || "hand"}:${cardIdSignature(player.hand)}:${cardIdSignature(player.foot)}`;
+}
+
+function cardIdSignature(cards) {
+  return Array.isArray(cards) ? cards.map((card) => card.id).join(",") : "";
 }
 
 function createDeck() {
