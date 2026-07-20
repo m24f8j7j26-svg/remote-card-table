@@ -282,6 +282,14 @@ input {
   font-size: 0.62rem;
 }
 
+.previous-label {
+  align-self: center;
+}
+
+.previous-value-label {
+  min-height: 1px;
+}
+
 .score-label {
   justify-self: start;
   min-width: 0;
@@ -304,12 +312,17 @@ input {
   text-align: right;
 }
 
+.score-empty {
+  min-width: 1.5rem;
+}
+
 .hand-value,
-.hand-bags {
+.net-value {
   color: var(--gold);
 }
 
-.hand-value.negative-score {
+.hand-value.negative-score,
+.net-value.negative-score {
   color: #ffb6a8;
 }
 
@@ -342,14 +355,15 @@ input {
 
 .score-stats {
   grid-column: 1 / -1;
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
   margin: -0.03rem 0 0.05rem;
   color: var(--muted);
   font-size: 0.74rem;
   font-weight: 800;
   line-height: 1.1;
+  text-align: center;
 }
 
 .score-stats span {

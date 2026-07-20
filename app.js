@@ -658,13 +658,14 @@ function finishHand() {
 function scorePlayer(bid, taken, currentBags) {
   const losses = [];
   if (bid === 0) {
-    if (taken === 0) return { score: nilBonus, bags: currentBags, handBags: 0 };
+    if (taken === 0) return { score: nilBonus, handTotal: nilBonus, bags: currentBags, handBags: 0 };
     const totalBags = currentBags + taken;
     const penalties = Math.floor(totalBags / 5);
     losses.push({ amount: Math.abs(nilPenalty), reason: "bidding 0" });
     if (penalties > 0) losses.push({ amount: penalties * 50, reason: "bags" });
     return {
       score: nilPenalty - penalties * 50,
+      handTotal: 0,
       bags: totalBags % 5,
       handBags: taken,
       losses,
@@ -672,14 +673,16 @@ function scorePlayer(bid, taken, currentBags) {
   }
   if (taken < bid) {
     losses.push({ amount: 10 * bid, reason: `bidding ${bid}` });
-    return { score: -10 * bid, bags: currentBags, handBags: 0, losses };
+    return { score: -10 * bid, handTotal: 0, bags: currentBags, handBags: 0, losses };
   }
   const overtricks = taken - bid;
   const totalBags = currentBags + overtricks;
   const penalties = Math.floor(totalBags / 5);
+  const handTotal = 10 * bid + overtricks;
   if (penalties > 0) losses.push({ amount: penalties * 50, reason: "bags" });
   return {
-    score: 10 * bid + overtricks - penalties * 50,
+    score: handTotal - penalties * 50,
+    handTotal,
     bags: totalBags % 5,
     handBags: overtricks,
     losses,
@@ -688,9 +691,11 @@ function scorePlayer(bid, taken, currentBags) {
 
 function handResultWithTotals(result, totalWas, bagsWas) {
   const newBags = Number.isFinite(result.bags) ? result.bags : bagsWas;
+  const handTotal = Number.isFinite(result.handTotal) ? result.handTotal : result.score + totalLossAmount(result.losses);
   return {
     ...result,
     bagsWas,
+    handTotal,
     handBags: Number.isFinite(result.handBags) ? result.handBags : 0,
     newBags,
     bags: newBags,
@@ -790,6 +795,7 @@ function handResultForSeat(seat) {
 
 function normalizeHandResult(result, currentTotal, currentBags) {
   const score = Number.isFinite(result.score) ? result.score : 0;
+  const losses = result.losses || [];
   const newTotal = Number.isFinite(result.newTotal) ? result.newTotal : currentTotal;
   const newBags = Number.isFinite(result.newBags)
     ? result.newBags
@@ -799,10 +805,11 @@ function normalizeHandResult(result, currentTotal, currentBags) {
   return {
     ...result,
     score,
-    losses: result.losses || [],
+    losses,
     totalWas: Number.isFinite(result.totalWas) ? result.totalWas : newTotal - score,
     newTotal,
     bagsWas: Number.isFinite(result.bagsWas) ? result.bagsWas : newBags,
+    handTotal: Number.isFinite(result.handTotal) ? result.handTotal : score + totalLossAmount(losses),
     handBags: Number.isFinite(result.handBags) ? result.handBags : 0,
     newBags,
     bags: newBags,
@@ -813,28 +820,34 @@ function scoreLedgerMarkup(seat, result) {
   const bid = bidLabel(state.bids[seat]);
   const totalWas = result ? result.totalWas : state.scores[seat];
   const bagsWas = result ? result.bagsWas : state.bags[seat];
-  const handScore = result ? formatScore(result.score) : "-";
+  const handTotal = result ? formatScore(result.handTotal) : "-";
   const handBags = result ? result.handBags : 0;
+  const netScore = result ? formatScore(result.score) : "-";
   const newTotal = result ? result.newTotal : state.scores[seat];
   const newBags = result ? result.newBags : state.bags[seat];
-  const handTone = result ? scoreToneClass(result.score) : "";
+  const handTone = result ? scoreToneClass(result.handTotal) : "";
+  const netTone = result ? scoreToneClass(result.score) : "";
   return `
     <div class="player-score-ledger">
       <div class="score-ledger-grid">
-        <span class="score-heading" aria-hidden="true"></span>
+        <span class="score-label previous-label">Previous</span>
         <span class="score-heading">Score</span>
         <span class="score-heading">Bags</span>
-        <span class="score-label">Total Was</span>
+        <span class="score-label previous-value-label" aria-hidden="true"></span>
         <strong class="score-value">${totalWas}</strong>
         <strong class="score-bags" aria-label="${formatBags(bagsWas)}">${bagsWas}</strong>
         <div class="score-stats">
           <span>Bid ${bid}</span>
           <span>Took ${state.taken[seat]}</span>
+          <span>Bags ${handBags}</span>
         </div>
         <span class="score-label">Hand</span>
-        <strong class="score-value hand-value ${handTone}">${handScore}</strong>
-        <strong class="score-bags hand-bags" aria-label="${formatBags(handBags)}">${handBags}</strong>
+        <strong class="score-value hand-value ${handTone}">${handTotal}</strong>
+        <span class="score-empty" aria-hidden="true"></span>
         ${handPenaltyMarkup(result)}
+        <span class="score-label net-label">Net</span>
+        <strong class="score-value net-value ${netTone}">${netScore}</strong>
+        <span class="score-empty" aria-hidden="true"></span>
         <span class="score-divider" aria-hidden="true"></span>
         <span class="score-label new-total-label">New Total</span>
         <strong class="score-value new-total-value">${newTotal}</strong>
@@ -852,6 +865,10 @@ function handPenaltyMarkup(result) {
       ${losses.map((loss) => `<span>-${loss.amount}${lossLabel(loss)}</span>`).join("")}
     </div>
   `;
+}
+
+function totalLossAmount(losses = []) {
+  return losses.reduce((total, loss) => total + (Number.isFinite(loss.amount) ? loss.amount : 0), 0);
 }
 
 function lossLabel(loss) {
