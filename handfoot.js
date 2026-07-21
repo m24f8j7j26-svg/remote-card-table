@@ -613,7 +613,13 @@ function skipFirstDiscard() {
 }
 
 function takeDiscard() {
-  if (!isMyTurn() || state.turnStage !== "draw" || !canTakeDiscard(mySeat).ok) return;
+  if (!isMyTurn() || state.turnStage !== "draw") return;
+  const check = canTakeDiscard(mySeat);
+  if (!check.ok) {
+    state.message = check.reason;
+    render();
+    return;
+  }
   const count = Math.min(5, state.discard.length);
   const drawn = state.discard.splice(0, count);
   activeCards(mySeat).push(...drawn);
@@ -630,7 +636,8 @@ function markDrawn(cards) {
 function canTakeDiscard(seat) {
   const top = state.discard[0];
   if (!top) return { ok: false, reason: "Discard is empty" };
-  if (state.discard.some(isWild)) return { ok: false, reason: "Discard pile is frozen by a wild card" };
+  if (isWild(top)) return { ok: false, reason: "Cannot pick up a wild card on top" };
+  if (top.rank === "3") return { ok: false, reason: "Cannot pick up a 3 on top" };
   const matches = activeCards(seat).filter((card) => card.rank === top.rank && !isWild(card));
   if (matches.length < 2) return { ok: false, reason: `Need two natural ${rankName(top.rank)}s` };
   return { ok: true };
@@ -889,18 +896,29 @@ function playTurnSound() {
   if (!turnAudioContext) return;
   turnAudioContext.resume?.();
   const now = turnAudioContext.currentTime;
-  const gain = turnAudioContext.createGain();
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(0.12, now + 0.015);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
-  gain.connect(turnAudioContext.destination);
-  [660, 880].forEach((frequency, index) => {
+  playBellTone(now, 880, 0.26);
+  playBellTone(now + 0.46, 587.33, 0.3);
+}
+
+function playBellTone(start, frequency, peakGain) {
+  const toneGain = turnAudioContext.createGain();
+  toneGain.gain.setValueAtTime(0.0001, start);
+  toneGain.gain.exponentialRampToValueAtTime(peakGain, start + 0.025);
+  toneGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.82);
+  toneGain.connect(turnAudioContext.destination);
+  [
+    { frequency, level: 1 },
+    { frequency: frequency * 1.5, level: 0.34 },
+  ].forEach(({ frequency: partialFrequency, level }) => {
     const oscillator = turnAudioContext.createOscillator();
+    const partialGain = turnAudioContext.createGain();
     oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(frequency, now + index * 0.12);
-    oscillator.connect(gain);
-    oscillator.start(now + index * 0.12);
-    oscillator.stop(now + index * 0.12 + 0.22);
+    oscillator.frequency.setValueAtTime(partialFrequency, start);
+    partialGain.gain.setValueAtTime(level, start);
+    oscillator.connect(partialGain);
+    partialGain.connect(toneGain);
+    oscillator.start(start);
+    oscillator.stop(start + 0.84);
   });
 }
 
