@@ -1641,7 +1641,7 @@ function render() {
   els.app.classList.toggle("two-player-mode", !isPartnersGame());
   els.hostBtn.disabled = Boolean(role);
   els.joinBtn.disabled = Boolean(role);
-  els.playerCountSelect.disabled = Boolean(role);
+  els.playerCountSelect.disabled = Boolean(role && (role !== "host" || syncMode !== "server"));
   els.copyBtn.disabled = !els.roomInput.value.trim();
   els.roomStatus.textContent = els.roomInput.value.trim().toUpperCase() || "-";
   setSelectedPlayerCount(playerCountForGame());
@@ -2045,8 +2045,25 @@ function confirmNewGame() {
 }
 
 function handlePlayerCountChange() {
-  if (role) {
+  if (role && (role !== "host" || syncMode !== "server")) {
     setSelectedPlayerCount(playerCountForGame());
+    return;
+  }
+  if (role === "host") {
+    const count = selectedPlayerCount();
+    const ok = window.confirm(`Switch this room to ${count === 4 ? "4-player partners" : "2 players"}? This will start a fresh game for everyone in this room.`);
+    if (!ok) {
+      setSelectedPlayerCount(playerCountForGame());
+      return;
+    }
+    stopWinnerSound(false);
+    const previousRevision = stateRevision();
+    state = createGame(null, count);
+    state.revision = previousRevision;
+    selected.clear();
+    drawnCardIds.clear();
+    state.message = `${count === 4 ? "4-player partners" : "2-player"} room started.`;
+    broadcast();
     return;
   }
   stopWinnerSound(false);
