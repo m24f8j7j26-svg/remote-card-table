@@ -275,12 +275,34 @@
   margin-top: 0.34rem;
 }
 
+.complete-book-pile.clean .book-card-back,
+.complete-book-pile.clean .book-card-middle {
+  background:
+    repeating-linear-gradient(45deg, #255d8b 0 0.34rem, #3e8ec2 0.34rem 0.68rem);
+}
+
+.complete-book-pile.dirty .book-card-back,
+.complete-book-pile.dirty .book-card-middle {
+  background:
+    repeating-linear-gradient(45deg, #6a4514 0 0.34rem, #c58a2e 0.34rem 0.68rem);
+}
+
+.complete-book-pile.black3 .book-card-back,
+.complete-book-pile.black3 .book-card-middle {
+  background:
+    repeating-linear-gradient(45deg, #161a1f 0 0.34rem, #3b424b 0.34rem 0.68rem);
+}
+
+.complete-book-pile.clean .book-card-top {
+  box-shadow: 0 0 0 2px rgba(76, 163, 221, 0.64);
+}
+
 .complete-book-pile.dirty .book-card-top {
-  box-shadow: 0 0 0 2px rgba(240, 196, 107, 0.58);
+  box-shadow: 0 0 0 2px rgba(240, 196, 107, 0.82);
 }
 
 .complete-book-pile.black3 .book-card-top {
-  box-shadow: 0 0 0 2px rgba(220, 226, 231, 0.45);
+  box-shadow: 0 0 0 2px rgba(220, 226, 231, 0.68);
 }
 
 .book-card {
@@ -296,12 +318,6 @@
     linear-gradient(145deg, #ffffff 0%, #fffaf0 72%, #f1eadc 100%);
   color: var(--card-ink);
   font-weight: 950;
-}
-
-.book-card-back,
-.book-card-middle {
-  background:
-    repeating-linear-gradient(45deg, #203f78 0 0.34rem, #2f5fa4 0.34rem 0.68rem);
 }
 
 .book-card-back {
@@ -340,6 +356,34 @@
   color: currentColor;
   font-size: 0.86rem;
   line-height: 1;
+}
+
+.book-type-badge {
+  position: absolute;
+  left: 50%;
+  bottom: -1.04rem;
+  z-index: 2;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  color: #151009;
+  font-size: 0.52rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1;
+  padding: 0.16rem 0.26rem;
+  text-transform: uppercase;
+}
+
+.complete-book-pile.clean .book-type-badge {
+  background: #8ed1ff;
+}
+
+.complete-book-pile.dirty .book-type-badge {
+  background: var(--gold);
+}
+
+.complete-book-pile.black3 .book-type-badge {
+  background: #dce2e7;
 }
 
 .book-kill-count {

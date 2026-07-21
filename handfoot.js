@@ -778,7 +778,9 @@ function validateNewMeld(cards, player) {
   if (rank === "3" && naturals.some((card) => card.suit === "H" || card.suit === "D")) return { ok: false, reason: "Only black 3s can make a book." };
   if (rank === "3" && cards.some(isWild)) return { ok: false, reason: "Black 3 book must be clean." };
   if (cards.length > 7) return { ok: false, reason: "A book tops out at 7 cards." };
-  if (player.melds.some((meld) => meld.rank === rank)) return { ok: false, reason: "Add to your existing meld for that rank." };
+  if (player.melds.some((meld) => meld.rank === rank && meld.cards.length < 7)) {
+    return { ok: false, reason: "Add to your open meld for that rank." };
+  }
   if (!dirtyRatioOk(cards)) return { ok: false, reason: "Naturals must outnumber wild cards." };
   return { ok: true, rank };
 }
@@ -964,13 +966,16 @@ function displayMeldCards(meld) {
 }
 
 function completeMeldMarkup(meld) {
+  const type = bookType(meld);
   const topCard = completeBookTopCard(meld);
   const killedCount = (meld.killed || []).length;
+  const typeLabel = type === "black3" ? "black 3" : type;
   return `
-    <div class="complete-book-pile ${bookType(meld)}" title="${rankName(meld.rank)} complete book${killedCount ? `, ${killedCount} killed` : ""}">
+    <div class="complete-book-pile ${type}" title="${rankName(meld.rank)} ${typeLabel} book${killedCount ? `, ${killedCount} killed` : ""}">
       <span class="book-card book-card-back"></span>
       <span class="book-card book-card-middle"></span>
       <span class="book-card book-card-top ${cardSuitClass(topCard)}">${cardMarkup(topCard)}</span>
+      <span class="book-type-badge">${typeLabel}</span>
       ${killedCount ? `<span class="book-kill-count">+${killedCount}</span>` : ""}
     </div>
   `;
