@@ -187,14 +187,17 @@
 
 .meld-cards {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.24rem;
+  flex-wrap: nowrap;
+  gap: 0;
   margin-top: 0.42rem;
+  overflow: hidden;
+  padding-bottom: 0.08rem;
 }
 
 .meld-card {
   position: relative;
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   width: 2.12rem;
@@ -209,6 +212,15 @@
   box-shadow: 0 5px 12px rgba(0, 0, 0, 0.18);
 }
 
+.meld-card + .meld-card {
+  margin-left: -1.12rem;
+}
+
+.meld-card:hover,
+.meld-card:focus-visible {
+  z-index: 2;
+}
+
 .meld-card.red {
   color: var(--red);
 }
@@ -219,15 +231,16 @@
 
 .meld-card .rank {
   position: absolute;
-  left: 0.22rem;
-  top: 0.18rem;
-  font-size: 0.62rem;
+  left: 0.2rem;
+  top: 0.16rem;
+  z-index: 1;
+  font-size: 0.76rem;
   line-height: 1;
 }
 
 .meld-card .suit {
   color: currentColor;
-  font-size: 1.18rem;
+  font-size: 0.86rem;
   line-height: 1;
 }
 
