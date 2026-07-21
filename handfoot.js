@@ -637,7 +637,6 @@ function canTakeDiscard(seat) {
   const top = state.discard[0];
   if (!top) return { ok: false, reason: "Discard is empty" };
   if (isWild(top)) return { ok: false, reason: "Cannot pick up a wild card on top" };
-  if (top.rank === "3") return { ok: false, reason: "Cannot pick up a 3 on top" };
   const matches = activeCards(seat).filter((card) => card.rank === top.rank && !isWild(card));
   const hasMatchingMeld = state.players[seat].melds.some((meld) => meld.rank === top.rank);
   if (matches.length < 2 && !hasMatchingMeld) {
