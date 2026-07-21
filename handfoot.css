@@ -465,9 +465,30 @@
   text-align: left;
 }
 
+.player-score {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.28rem;
+  color: var(--gold);
+  flex: 0 0 auto;
+  font-weight: 950;
+}
+
+.player-score span {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.player-score strong {
+  color: var(--gold);
+  font-size: 1.08rem;
+  line-height: 1;
+}
+
 .player-card-count {
   color: var(--muted);
-  flex: 0 0 auto;
   font-size: 0.7rem;
   font-weight: 850;
 }

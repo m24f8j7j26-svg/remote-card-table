@@ -80,6 +80,7 @@ function normalizeState(game) {
   if (!game) return createGame();
   if (!game.game) game.game = "handfoot";
   if (!Number.isFinite(game.revision)) game.revision = 0;
+  if (!seats.includes(game.roundStarter)) game.roundStarter = "south";
   return game;
 }
 
@@ -149,6 +150,7 @@ function shuffle(deck) {
 function createGame(previous = null) {
   const deck = shuffle(createDeck());
   const round = previous ? Math.min(previous.round + 1, 4) : 1;
+  const starter = previous ? nextSeat(previous.roundStarter || "south") : "south";
   const players = {
     south: { hand: deck.splice(0, 11), foot: deck.splice(0, 11), active: "hand", melds: [], opened: false },
     north: { hand: deck.splice(0, 11), foot: deck.splice(0, 11), active: "hand", melds: [], opened: false },
@@ -161,10 +163,11 @@ function createGame(previous = null) {
     stock: deck,
     discard: [deck.shift()],
     players,
-    currentTurn: "south",
+    roundStarter: starter,
+    currentTurn: starter,
     turnStage: "firstDiscard",
     wentOut: null,
-    message: "South may take the first discard card, or skip it and draw normally.",
+    message: `${seatNames[starter]} may take the first discard card, or skip it and draw normally.`,
   };
 }
 
@@ -896,8 +899,9 @@ function renderSeats() {
     el.innerHTML = `
       <div class="player-heading">
         <div class="player-name">${seatNames[seat]}${seat === mySeat ? " (you)" : ""}</div>
-        <div class="player-card-count">Hand ${player.hand.length} · Foot ${player.foot.length}</div>
+        <div class="player-score"><span>Score</span><strong>${state.scores[seat]}</strong></div>
       </div>
+      <div class="player-card-count">Hand ${player.hand.length} · Foot ${player.foot.length}</div>
     `;
     el.append(createPlayerMeldBoard(seat));
   });
