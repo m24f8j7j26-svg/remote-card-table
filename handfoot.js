@@ -690,8 +690,9 @@ function discardSelected() {
   state.discard.unshift(card);
   selected.clear();
   if (maybeMoveToFoot(mySeat)) {
-    state.turnStage = "play";
-    state.message = `${seatNames[mySeat]} moved into the Foot.`;
+    const mover = mySeat;
+    endTurn();
+    state.message = `${seatNames[mover]} moved into the Foot. ${seatNames[state.currentTurn]} to draw.`;
   } else if (activeCards(mySeat).length === 0 && canGoOut(mySeat).ok) {
     finishRound(mySeat);
   } else {
