@@ -639,7 +639,10 @@ function canTakeDiscard(seat) {
   if (isWild(top)) return { ok: false, reason: "Cannot pick up a wild card on top" };
   if (top.rank === "3") return { ok: false, reason: "Cannot pick up a 3 on top" };
   const matches = activeCards(seat).filter((card) => card.rank === top.rank && !isWild(card));
-  if (matches.length < 2) return { ok: false, reason: `Need two natural ${rankName(top.rank)}s` };
+  const hasMatchingMeld = state.players[seat].melds.some((meld) => meld.rank === top.rank);
+  if (matches.length < 2 && !hasMatchingMeld) {
+    return { ok: false, reason: `Need two natural ${rankName(top.rank)}s or a matching meld` };
+  }
   return { ok: true };
 }
 
