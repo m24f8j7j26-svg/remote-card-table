@@ -273,12 +273,6 @@
   line-height: 1;
 }
 
-.meld-card .suit {
-  color: currentColor;
-  font-size: 0.86rem;
-  line-height: 1;
-}
-
 .complete-book {
   align-self: start;
 }
@@ -371,10 +365,52 @@
   line-height: 1;
 }
 
+.meld-card .suit,
 .book-card .suit {
+  display: inline-grid;
+  place-items: center;
+  width: 1.18rem;
+  height: 1.18rem;
+  border: 0;
+  border-radius: 0.32rem;
+  background: #f6f2e7;
   color: currentColor;
-  font-size: 0.86rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.02rem;
+  font-weight: 950;
   line-height: 1;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.72),
+    0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+.meld-card.suit-s .suit,
+.book-card.suit-s .suit {
+  border-radius: 0.32rem 0.32rem 0.52rem 0.52rem;
+  background: #14171f;
+  color: #f8f4ea;
+}
+
+.meld-card.suit-h .suit,
+.book-card.suit-h .suit,
+.meld-card.suit-d .suit,
+.book-card.suit-d .suit {
+  background: #fff0ec;
+  color: #c9473f;
+}
+
+.meld-card.suit-c .suit,
+.book-card.suit-c .suit {
+  border-radius: 999px;
+  background: #e4f5df;
+  color: #145f45;
+}
+
+.meld-card.suit-j .suit,
+.book-card.suit-j .suit {
+  border-radius: 999px;
+  background: #18130c;
+  color: var(--gold);
 }
 
 .book-type-badge {
