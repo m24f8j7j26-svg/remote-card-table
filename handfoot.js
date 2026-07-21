@@ -903,18 +903,23 @@ function sortedMelds(seat) {
 }
 
 function createMeldElement(seat, meld, index) {
+  const canAddToMeld = seat === mySeat && isMyTurn() && state.turnStage === "play" && meld.cards.length < 7;
   const item = document.createElement("div");
-  item.className = `meld ${meld.cards.length >= 7 ? "complete-book" : ""}`;
+  item.className = `meld ${meld.cards.length >= 7 ? "complete-book" : ""} ${canAddToMeld ? "meld-add-target" : ""}`;
   item.innerHTML = `
-    <div class="meld-title"><span>${rankName(meld.rank)}</span><span>${meld.cards.length}/7</span></div>
+    <div class="meld-title"><span>${rankName(meld.rank)}</span></div>
     ${meld.cards.length >= 7 ? completeMeldMarkup(meld) : `<div class="meld-cards">${displayMeldCards(meld).map(meldCardMarkup).join("")}</div>`}
   `;
-  if (seat === mySeat && isMyTurn() && state.turnStage === "play" && meld.cards.length < 7) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = "Add selected";
-    button.addEventListener("click", () => meldSelected(index));
-    item.append(button);
+  if (canAddToMeld) {
+    item.tabIndex = 0;
+    item.role = "button";
+    item.ariaLabel = `Add selected cards to ${rankName(meld.rank)}`;
+    item.addEventListener("click", () => meldSelected(index));
+    item.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      meldSelected(index);
+    });
   }
   return item;
 }

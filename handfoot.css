@@ -173,17 +173,29 @@
   padding: 0.42rem;
 }
 
-.meld button {
-  width: 100%;
-  min-height: 2rem;
-  margin-top: 0.4rem;
-}
-
 .meld-title {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   gap: 0.5rem;
   font-weight: 900;
+}
+
+.meld-add-target {
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.meld-add-target:hover {
+  border-color: rgba(240, 196, 107, 0.72);
+  background: rgba(240, 196, 107, 0.12);
+}
+
+.meld-add-target:focus-visible {
+  outline: 3px solid rgba(240, 196, 107, 0.82);
+  outline-offset: 2px;
 }
 
 .meld-cards {
