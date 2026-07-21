@@ -169,7 +169,8 @@
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 0.5rem;
   background: rgba(255, 255, 255, 0.06);
-  padding: 0.45rem;
+  min-width: 0;
+  padding: 0.42rem;
 }
 
 .meld button {
@@ -187,11 +188,13 @@
 
 .meld-cards {
   display: flex;
-  flex-wrap: nowrap;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 0;
   margin-top: 0.42rem;
-  overflow: hidden;
+  overflow: visible;
   padding-bottom: 0.08rem;
+  padding-left: 0.08rem;
 }
 
 .meld-card {
@@ -213,12 +216,13 @@
 }
 
 .meld-card + .meld-card {
-  margin-left: -1.12rem;
+  margin-top: -2rem;
 }
 
 .meld-card:hover,
 .meld-card:focus-visible {
   z-index: 2;
+  transform: translateX(0.45rem);
 }
 
 .meld-card.red {
@@ -291,7 +295,7 @@
 
 .player-meld-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(5.7rem, 1fr));
   gap: 0.38rem;
   margin-top: 0.45rem;
 }

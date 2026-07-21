@@ -873,8 +873,7 @@ function renderSeats() {
 function createPlayerMeldBoard(seat) {
   const board = document.createElement("div");
   board.className = "player-meld-grid";
-  const melds = state.players[seat].melds;
-  melds.forEach((meld, index) => {
+  sortedMelds(seat).forEach(({ meld, index }) => {
     board.append(createMeldElement(seat, meld, index));
   });
   return board;
@@ -892,9 +891,15 @@ function renderDiscardPreview() {
 
 function renderMelds(seat, container) {
   container.innerHTML = "";
-  state.players[seat].melds.forEach((meld, index) => {
+  sortedMelds(seat).forEach(({ meld, index }) => {
     container.append(createMeldElement(seat, meld, index));
   });
+}
+
+function sortedMelds(seat) {
+  return state.players[seat].melds
+    .map((meld, index) => ({ meld, index }))
+    .sort((a, b) => rankOrder[a.meld.rank] - rankOrder[b.meld.rank] || a.index - b.index);
 }
 
 function createMeldElement(seat, meld, index) {
@@ -902,7 +907,7 @@ function createMeldElement(seat, meld, index) {
   item.className = "meld";
   item.innerHTML = `
     <div class="meld-title"><span>${rankName(meld.rank)}</span><span>${meld.cards.length}/7</span></div>
-    <div class="meld-cards">${meld.cards.map(meldCardMarkup).join("")}</div>
+    <div class="meld-cards">${sortCards(meld.cards).map(meldCardMarkup).join("")}</div>
   `;
   if (seat === mySeat && isMyTurn() && state.turnStage === "play") {
     const button = document.createElement("button");
