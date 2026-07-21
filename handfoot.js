@@ -1106,20 +1106,33 @@ function playTurnSound() {
 function playJackpotSound() {
   if (!createTurnAudioContext() || !canPlayAudio()) return false;
   turnAudioContext.resume?.();
-  const now = turnAudioContext.currentTime;
+  const now = turnAudioContext.currentTime + 0.02;
   const output = createWinnerSoundOutput();
   if (!output) return false;
+  playBassThump(now, output);
   [
-    { at: 0, frequency: 523.25, peak: 0.26, duration: 0.15 },
-    { at: 0.12, frequency: 659.25, peak: 0.27, duration: 0.15 },
-    { at: 0.24, frequency: 783.99, peak: 0.29, duration: 0.16 },
-    { at: 0.36, frequency: 1046.5, peak: 0.31, duration: 0.18 },
-    { at: 0.58, frequency: 1318.51, peak: 0.28, duration: 0.12 },
-    { at: 0.7, frequency: 1567.98, peak: 0.25, duration: 0.12 },
+    { at: 0.02, frequency: 1567.98 },
+    { at: 0.11, frequency: 1975.53 },
+    { at: 0.2, frequency: 2349.32 },
+    { at: 0.29, frequency: 2637.02 },
+  ].forEach(({ at, frequency }) => playCoinSparkle(now + at, frequency, output));
+  [
+    { at: 0.12, frequency: 523.25, peak: 0.2, duration: 0.18 },
+    { at: 0.28, frequency: 659.25, peak: 0.22, duration: 0.2 },
+    { at: 0.44, frequency: 783.99, peak: 0.23, duration: 0.22 },
+    { at: 0.6, frequency: 1046.5, peak: 0.26, duration: 0.26 },
+    { at: 0.84, frequency: 1318.51, peak: 0.22, duration: 0.2 },
+    { at: 0.98, frequency: 1567.98, peak: 0.2, duration: 0.2 },
+    { at: 1.12, frequency: 2093, peak: 0.21, duration: 0.24 },
   ].forEach(({ at, frequency, peak, duration }) => playPrizeTone(now + at, frequency, peak, duration, output));
-  playBellTone(now + 0.88, 523.25, 0.34, 0.62, output);
-  playBellTone(now + 0.96, 659.25, 0.28, 0.56, output);
-  playBellTone(now + 1.04, 783.99, 0.25, 0.5, output);
+  playSparkleSweep(now + 0.54, 880, 1760, 0.52, output);
+  playWinnerChord(now + 1.42, [523.25, 659.25, 783.99, 1046.5], 0.22, 0.96, output);
+  [
+    { at: 1.74, frequency: 2093 },
+    { at: 1.9, frequency: 2637.02 },
+    { at: 2.06, frequency: 3135.96 },
+  ].forEach(({ at, frequency }) => playCoinSparkle(now + at, frequency, output));
+  playWinnerChord(now + 2.18, [659.25, 783.99, 1046.5, 1318.51], 0.18, 0.72, output);
   return true;
 }
 
@@ -1154,7 +1167,7 @@ function startWinnerSoundLoop(key = jackpotSoundKey()) {
         return;
       }
       playJackpotSound();
-    }, 2600);
+    }, 3600);
   }
   return true;
 }
@@ -1200,6 +1213,62 @@ function stopWinnerSoundNow() {
 
 function winnerSoundIsPlaying() {
   return Boolean(winnerSoundLoopTimer && activeWinnerSoundKey === jackpotSoundKey());
+}
+
+function playBassThump(start, output = turnAudioContext.destination) {
+  const gain = turnAudioContext.createGain();
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(0.22, start + 0.018);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.32);
+  gain.connect(output);
+  const oscillator = turnAudioContext.createOscillator();
+  oscillator.type = "sine";
+  oscillator.frequency.setValueAtTime(130.81, start);
+  oscillator.frequency.exponentialRampToValueAtTime(65.41, start + 0.28);
+  oscillator.connect(gain);
+  oscillator.start(start);
+  oscillator.stop(start + 0.34);
+}
+
+function playCoinSparkle(start, frequency, output = turnAudioContext.destination) {
+  const filter = turnAudioContext.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.setValueAtTime(frequency, start);
+  filter.Q.setValueAtTime(8, start);
+  filter.connect(output);
+  const gain = turnAudioContext.createGain();
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(0.16, start + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
+  gain.connect(filter);
+  const oscillator = turnAudioContext.createOscillator();
+  oscillator.type = "square";
+  oscillator.frequency.setValueAtTime(frequency, start);
+  oscillator.frequency.exponentialRampToValueAtTime(frequency * 1.18, start + 0.06);
+  oscillator.connect(gain);
+  oscillator.start(start);
+  oscillator.stop(start + 0.2);
+}
+
+function playSparkleSweep(start, fromFrequency, toFrequency, duration, output = turnAudioContext.destination) {
+  const gain = turnAudioContext.createGain();
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(0.08, start + 0.035);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  gain.connect(output);
+  const oscillator = turnAudioContext.createOscillator();
+  oscillator.type = "triangle";
+  oscillator.frequency.setValueAtTime(fromFrequency, start);
+  oscillator.frequency.exponentialRampToValueAtTime(toFrequency, start + duration);
+  oscillator.connect(gain);
+  oscillator.start(start);
+  oscillator.stop(start + duration + 0.02);
+}
+
+function playWinnerChord(start, frequencies, peakGain, duration, output = turnAudioContext.destination) {
+  frequencies.forEach((frequency, index) => {
+    playBellTone(start + index * 0.018, frequency, peakGain * (index === 0 ? 1 : 0.72), duration - index * 0.04, output);
+  });
 }
 
 function playPrizeTone(start, frequency, peakGain, duration, output = turnAudioContext.destination) {
