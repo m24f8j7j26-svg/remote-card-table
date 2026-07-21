@@ -1,6 +1,10 @@
-const seats = ["south", "north"];
-const seatNames = { south: "South", north: "North" };
-const humanSeats = { host: "south", guest: "north" };
+const hostSeat = "south";
+const twoPlayerSeats = ["south", "north"];
+const fourPlayerSeats = ["south", "west", "north", "east"];
+const seatNames = { south: "South", west: "West", north: "North", east: "East" };
+const teamNames = { ns: "North/South", ew: "East/West" };
+const teamBySeat = { south: "ns", north: "ns", west: "ew", east: "ew" };
+const deckCountByPlayerCount = { 2: 6, 4: 8 };
 const suitSymbols = { S: "♠", H: "♥", D: "♦", C: "♣", J: "★" };
 const rankOrder = { 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, T: 10, J: 11, Q: 12, K: 13, A: 14, 2: 15, X: 16 };
 const roundRules = [
@@ -12,28 +16,28 @@ const roundRules = [
 const startingHandSize = 11;
 const startingFootSize = 11;
 const cardsPerDeck = 13 * 4 + 2;
-const deckCount = 6;
-const previousDeckCounts = [4];
+const deckCount = deckCountByPlayerCount[2];
+const previousDeckCounts = [4, 6];
 const localSessionKey = "remote-card-table-handfoot-session-v1";
 const remoteRelayOrigin = "https://cards.boyzofsummerpics.com";
 const apiBaseUrl =
   typeof location !== "undefined" && location.hostname.endsWith("github.io") ? remoteRelayOrigin : "";
 
 const els = {
+  app: document.querySelector(".handfoot-app"),
   hostBtn: document.querySelector("#hostBtn"),
+  playerCountSelect: document.querySelector("#playerCountSelect"),
   copyBtn: document.querySelector("#copyBtn"),
   clearRoomBtn: document.querySelector("#clearRoomBtn"),
   joinBtn: document.querySelector("#joinBtn"),
+  seatSelect: document.querySelector("#seatSelect"),
   roomInput: document.querySelector("#roomInput"),
   connectionStatus: document.querySelector("#connectionStatus"),
   seatStatus: document.querySelector("#seatStatus"),
   roomStatus: document.querySelector("#roomStatus"),
-  southScore: document.querySelector("#southScore"),
-  northScore: document.querySelector("#northScore"),
-  roundStatus: document.querySelector("#roundStatus"),
+  scoreboard: document.querySelector("#scoreboard"),
   roundEndPanel: document.querySelector("#roundEndPanel"),
-  seatNorth: document.querySelector("#seatNorth"),
-  seatSouth: document.querySelector("#seatSouth"),
+  seatPanels: document.querySelector("#seatPanels"),
   stockBtn: document.querySelector("#stockBtn"),
   discardBtn: document.querySelector("#discardBtn"),
   stockCount: document.querySelector("#stockCount"),
@@ -47,8 +51,7 @@ const els = {
   handLabel: document.querySelector("#handLabel"),
   turnStatus: document.querySelector("#turnStatus"),
   hand: document.querySelector("#hand"),
-  southMelds: document.querySelector("#southMelds"),
-  northMelds: document.querySelector("#northMelds"),
+  meldPanels: document.querySelector("#meldPanels"),
 };
 
 let role = null;
@@ -88,18 +91,146 @@ function apiUrl(path) {
   return `${apiBaseUrl}${path}`;
 }
 
+function selectedPlayerCount() {
+  return Number(els.playerCountSelect?.value) === 4 ? 4 : 2;
+}
+
+function setSelectedPlayerCount(count) {
+  if (els.playerCountSelect) els.playerCountSelect.value = String(count === 4 ? 4 : 2);
+}
+
+function playerCountForGame(game = state) {
+  return Number(game?.playerCount) === 4 ? 4 : 2;
+}
+
+function seatsForPlayerCount(count) {
+  return count === 4 ? fourPlayerSeats : twoPlayerSeats;
+}
+
+function seatsForGame(game = state) {
+  return seatsForPlayerCount(playerCountForGame(game));
+}
+
+function seatDisplayOrder(game = state) {
+  return playerCountForGame(game) === 4 ? ["north", "west", "east", "south"] : ["north", "south"];
+}
+
+function joinableSeatsForGame(game = state) {
+  return seatDisplayOrder(game).filter((seat) => seat !== hostSeat);
+}
+
+function isPartnersGame(game = state) {
+  return playerCountForGame(game) === 4;
+}
+
+function ownerForSeat(seat, game = state) {
+  return isPartnersGame(game) ? teamBySeat[seat] : seat;
+}
+
+function ownerName(owner) {
+  return teamNames[owner] || seatNames[owner] || owner;
+}
+
+function meldOwnersForGame(game = state) {
+  return isPartnersGame(game) ? ["ns", "ew"] : seatsForGame(game);
+}
+
+function scoreOwnersForGame(game = state) {
+  return meldOwnersForGame(game);
+}
+
+function seatsForOwner(owner, game = state) {
+  if (!isPartnersGame(game)) return seatsForGame(game).includes(owner) ? [owner] : [];
+  return seatsForGame(game).filter((seat) => teamBySeat[seat] === owner);
+}
+
+function meldArea(owner, game = state) {
+  if (owner === "ns" || owner === "ew") return game.teams?.[owner];
+  return game.players?.[owner];
+}
+
+function meldAreaForSeat(seat, game = state) {
+  return meldArea(ownerForSeat(seat, game), game);
+}
+
+function scoreForOwner(owner, game = state) {
+  return Number(game?.scores?.[owner]) || 0;
+}
+
+function deckCountForPlayerCount(count) {
+  return deckCountByPlayerCount[count === 4 ? 4 : 2];
+}
+
+function deckCountForGame(game = state) {
+  return deckCountForPlayerCount(playerCountForGame(game));
+}
+
 function stateRevision(game = state) {
   return Number.isFinite(game?.revision) ? game.revision : 0;
 }
 
 function normalizeState(game) {
-  if (!game) return createGame();
+  if (!game) return createGame(null, selectedPlayerCount());
   if (!game.game) game.game = "handfoot";
+  game.playerCount = playerCountForGame(game);
   if (!Number.isFinite(game.revision)) game.revision = 0;
-  if (!seats.includes(game.roundStarter)) game.roundStarter = "south";
+  ensurePlayers(game);
+  ensureMeldAreas(game);
+  ensureScores(game);
+  if (!seatsForGame(game).includes(game.roundStarter)) game.roundStarter = hostSeat;
+  if (!seatsForGame(game).includes(game.currentTurn)) game.currentTurn = game.roundStarter;
   upgradeGameDeckCount(game);
   if (typeof game.firstUpCardOpen !== "boolean") game.firstUpCardOpen = looksLikeOpeningUpCard(game);
   return game;
+}
+
+function ensurePlayers(game) {
+  if (!game.players || typeof game.players !== "object") game.players = {};
+  seatsForGame(game).forEach((seat) => {
+    const player = game.players[seat] || {};
+    player.hand = Array.isArray(player.hand) ? player.hand : [];
+    player.foot = Array.isArray(player.foot) ? player.foot : [];
+    player.active = player.active === "foot" ? "foot" : "hand";
+    player.melds = Array.isArray(player.melds) ? player.melds : [];
+    player.opened = Boolean(player.opened);
+    game.players[seat] = player;
+  });
+}
+
+function ensureMeldAreas(game) {
+  if (!isPartnersGame(game)) return;
+  const oldTeams = game.teams || {};
+  game.teams = {
+    ns: normalizeTeamArea(oldTeams.ns, [game.players.south, game.players.north]),
+    ew: normalizeTeamArea(oldTeams.ew, [game.players.west, game.players.east]),
+  };
+}
+
+function normalizeTeamArea(area, fallbackPlayers) {
+  if (area && typeof area === "object") {
+    area.melds = Array.isArray(area.melds) ? area.melds : [];
+    area.opened = Boolean(area.opened);
+    return area;
+  }
+  return {
+    melds: fallbackPlayers.flatMap((player) => (Array.isArray(player?.melds) ? player.melds : [])),
+    opened: fallbackPlayers.some((player) => player?.opened),
+  };
+}
+
+function ensureScores(game) {
+  const previous = game.scores || {};
+  if (isPartnersGame(game)) {
+    game.scores = {
+      ns: Number(previous.ns ?? ((Number(previous.south) || 0) + (Number(previous.north) || 0))) || 0,
+      ew: Number(previous.ew ?? ((Number(previous.west) || 0) + (Number(previous.east) || 0))) || 0,
+    };
+    return;
+  }
+  game.scores = {
+    south: Number(previous.south ?? previous.ns) || 0,
+    north: Number(previous.north) || 0,
+  };
 }
 
 function isFirstUpCardAvailable(game = state) {
@@ -117,35 +248,35 @@ function looksLikeOpeningUpCard(game) {
 
 function inferOpeningDeckCount(game) {
   if (!game?.players || !game?.discard?.[0] || game.discard.length !== 1) return null;
-  const counts = [deckCount, ...previousDeckCounts];
-  return counts.find((count) => game.stock?.length === openingStockSizeFor(count) && hasOpeningPlayerShape(game)) || null;
+  const counts = [deckCountForGame(game), ...previousDeckCounts];
+  return counts.find((count) => game.stock?.length === openingStockSizeFor(count, game) && hasOpeningPlayerShape(game)) || null;
 }
 
 function hasOpeningPlayerShape(game) {
-  return seats.every((seat) => {
+  return seatsForGame(game).every((seat) => {
     const player = game.players[seat];
     return (
       player?.active === "hand" &&
       player.hand?.length === startingHandSize &&
       player.foot?.length === startingFootSize &&
-      (player.melds || []).length === 0 &&
-      !player.opened
+      (player.melds || []).length === 0
     );
-  });
+  }) && meldOwnersForGame(game).every((owner) => (meldArea(owner, game)?.melds || []).length === 0 && !meldArea(owner, game)?.opened);
 }
 
 function upgradeGameDeckCount(game) {
   const currentDeckCount = inferDeckCountFromCards(game);
-  if (!currentDeckCount || currentDeckCount >= deckCount || game.wentOut) {
+  const targetDeckCount = deckCountForGame(game);
+  if (!currentDeckCount || currentDeckCount >= targetDeckCount || game.wentOut) {
     if (currentDeckCount && !Number.isFinite(game.deckCount)) game.deckCount = currentDeckCount;
     return;
   }
   const addedCards = deterministicShuffle(
-    createDeck(deckCount - currentDeckCount, currentDeckCount),
-    deckUpgradeSeed(game, currentDeckCount)
+    createDeck(targetDeckCount - currentDeckCount, currentDeckCount),
+    deckUpgradeSeed(game, currentDeckCount, targetDeckCount)
   );
   game.stock = [...(game.stock || []), ...addedCards];
-  game.deckCount = deckCount;
+  game.deckCount = targetDeckCount;
 }
 
 function inferDeckCountFromCards(game) {
@@ -164,20 +295,22 @@ function deckIndexFromCardId(id) {
 
 function allGameCards(game) {
   const cards = [...(game?.stock || []), ...(game?.discard || [])];
-  seats.forEach((seat) => {
+  seatsForGame(game).forEach((seat) => {
     const player = game?.players?.[seat];
     if (!player) return;
     cards.push(...(player.hand || []), ...(player.foot || []));
-    (player.melds || []).forEach((meld) => cards.push(...(meld.cards || []), ...(meld.killed || [])));
+  });
+  meldOwnersForGame(game).forEach((owner) => {
+    (meldArea(owner, game)?.melds || []).forEach((meld) => cards.push(...(meld.cards || []), ...(meld.killed || [])));
   });
   return cards;
 }
 
-function deckUpgradeSeed(game, currentDeckCount) {
+function deckUpgradeSeed(game, currentDeckCount, targetDeckCount = deckCountForGame(game)) {
   return [
     "handfoot-deck-upgrade",
     currentDeckCount,
-    deckCount,
+    targetDeckCount,
     game.round,
     game.roundStarter,
     allGameCards(game)
@@ -207,8 +340,8 @@ function hashString(text) {
   return hash >>> 0;
 }
 
-function openingStockSizeFor(count) {
-  return count * cardsPerDeck - seats.length * (startingHandSize + startingFootSize) - 1;
+function openingStockSizeFor(count, game = state) {
+  return count * cardsPerDeck - seatsForGame(game).length * (startingHandSize + startingFootSize) - 1;
 }
 
 function bumpStateRevision() {
@@ -226,7 +359,18 @@ function currentRoomCode() {
 }
 
 function roleForSeat(seat) {
-  return seat === humanSeats.host ? "host" : "guest";
+  return seat === hostSeat ? "host" : "guest";
+}
+
+function chooseJoinSeat(game, requestedSeat, roomPresence = {}, restoring = false) {
+  const activeSeats = seatsForGame(game);
+  if (restoring && activeSeats.includes(requestedSeat)) return requestedSeat;
+  if (requestedSeat === hostSeat && activeSeats.includes(requestedSeat)) return requestedSeat;
+  if (requestedSeat && requestedSeat !== hostSeat && activeSeats.includes(requestedSeat) && !roomPresence?.[requestedSeat]?.online) {
+    return requestedSeat;
+  }
+  const openSeat = joinableSeatsForGame(game).find((seat) => !roomPresence?.[seat]?.online);
+  return openSeat || joinableSeatsForGame(game)[0] || hostSeat;
 }
 
 function cloneState(game) {
@@ -274,23 +418,30 @@ function shuffle(deck) {
   return cards;
 }
 
-function createGame(previous = null) {
-  const deck = shuffle(createDeck());
+function createGame(previous = null, playerCount = previous ? playerCountForGame(previous) : selectedPlayerCount()) {
+  const count = playerCount === 4 ? 4 : 2;
+  const deckTarget = deckCountForPlayerCount(count);
+  const deck = shuffle(createDeck(deckTarget));
   const round = previous ? Math.min(previous.round + 1, 4) : 1;
-  const starter = previous ? nextSeat(previous.roundStarter || "south") : "south";
-  const players = {
-    south: { hand: deck.splice(0, 11), foot: deck.splice(0, 11), active: "hand", melds: [], opened: false },
-    north: { hand: deck.splice(0, 11), foot: deck.splice(0, 11), active: "hand", melds: [], opened: false },
-  };
+  const activeSeats = seatsForPlayerCount(count);
+  const previousStarter = previous && playerCountForGame(previous) === count ? previous.roundStarter || hostSeat : null;
+  const starter = previousStarter ? nextSeat(previousStarter, count) : hostSeat;
+  const players = {};
+  activeSeats.forEach((seat) => {
+    players[seat] = { hand: deck.splice(0, 11), foot: deck.splice(0, 11), active: "hand", melds: [], opened: false };
+  });
+  const scores = previous && playerCountForGame(previous) === count ? normalizedScoresForCount(previous.scores, count) : initialScores(count);
   return {
     game: "handfoot",
+    playerCount: count,
     revision: previous ? stateRevision(previous) : 0,
     round,
-    scores: previous ? previous.scores : { south: 0, north: 0 },
+    scores,
     stock: deck,
     discard: [deck.shift()],
     players,
-    deckCount,
+    teams: count === 4 ? { ns: { melds: [], opened: false }, ew: { melds: [], opened: false } } : null,
+    deckCount: deckTarget,
     roundStarter: starter,
     currentTurn: starter,
     turnStage: "firstDiscard",
@@ -298,6 +449,16 @@ function createGame(previous = null) {
     wentOut: null,
     message: `${seatNames[starter]} may take the first up-card, or skip it and draw normally.`,
   };
+}
+
+function initialScores(count) {
+  return count === 4 ? { ns: 0, ew: 0 } : { south: 0, north: 0 };
+}
+
+function normalizedScoresForCount(scores, count) {
+  const game = { playerCount: count, scores: scores || {} };
+  ensureScores(game);
+  return game.scores;
 }
 
 function loadLocalSession() {
@@ -353,17 +514,23 @@ function setActiveCards(seat, cards) {
 
 function hostRoom() {
   if (syncMode !== "server") {
+    if (selectedPlayerCount() === 4) {
+      state.message = "4-player partners needs the hosted relay. Use the public cards link for partner rooms.";
+      render();
+      return;
+    }
     hostPeerRoom();
     return;
   }
   const savedRoom = savedSession?.room?.toUpperCase();
   const room = currentRoomCode();
   if (room && savedRoom === room) {
-    connectServerRoom(room, humanSeats.host, "Reconnected", "The saved room is no longer available. Host a new room or ask for a fresh room code.");
+    connectServerRoom(room, hostSeat, "Reconnected", "The saved room is no longer available. Host a new room or ask for a fresh room code.");
     return;
   }
   role = "host";
-  mySeat = humanSeats.host;
+  mySeat = hostSeat;
+  state = createGame(null, selectedPlayerCount());
   createRoom();
 }
 
@@ -397,7 +564,8 @@ function peerErrorText(error) {
 
 function hostPeerRoom() {
   role = "host";
-  mySeat = humanSeats.host;
+  mySeat = hostSeat;
+  state = createGame(null, 2);
   const code = makeRoomCode("CARDS");
   setConnection("Creating room...");
   peer = new Peer(code, peerOptions());
@@ -486,11 +654,11 @@ async function joinRoom() {
   }
   const room = currentRoomCode();
   if (!room) return setConnection("Enter a room code");
-  await connectServerRoom(room, humanSeats.guest, "Connected", "Ask the host for the newest room code, then try Join again.");
+  await connectServerRoom(room, els.seatSelect.value || "north", "Connected", "Ask the host for the newest room code, then try Join again.");
 }
 
 async function reconnectSavedServerRoom() {
-  if (!savedSession?.room || !seats.includes(savedSession.seat)) return false;
+  if (!savedSession?.room || !Object.keys(seatNames).includes(savedSession.seat)) return false;
   return connectServerRoom(
     savedSession.room,
     savedSession.seat,
@@ -501,8 +669,10 @@ async function reconnectSavedServerRoom() {
 }
 
 async function connectServerRoom(room, seat, connectedText, missingMessage, restoring = false) {
-  role = roleForSeat(seat);
-  mySeat = seat;
+  if (Object.keys(seatNames).includes(seat)) {
+    role = roleForSeat(seat);
+    mySeat = seat;
+  }
   els.roomInput.value = room;
   setConnection(restoring ? "Reconnecting..." : "Connecting...");
   render();
@@ -512,8 +682,11 @@ async function connectServerRoom(room, seat, connectedText, missingMessage, rest
     const payload = await response.json();
     const remoteState = normalizeState(payload.state);
     const savedState = normalizeState(savedSession?.state);
-    state = restoring && stateRevision(savedState) > stateRevision(remoteState) ? savedState : remoteState;
     presence = payload.presence || {};
+    state = restoring && stateRevision(savedState) > stateRevision(remoteState) ? savedState : remoteState;
+    mySeat = chooseJoinSeat(state, seat, presence, restoring);
+    role = roleForSeat(mySeat);
+    setSelectedPlayerCount(playerCountForGame(state));
     setConnection(connectedText);
     startPolling(room);
     startPresence(room);
@@ -536,7 +709,7 @@ function joinPeerRoom() {
   const room = els.roomInput.value.trim().toUpperCase();
   if (!room) return setConnection("Enter a room code");
   role = "guest";
-  mySeat = humanSeats.guest;
+  mySeat = "north";
   setConnection("Connecting...");
   peer = new Peer(undefined, peerOptions());
   peer.on("open", () => {
@@ -661,11 +834,15 @@ function renderConnection() {
 
 function partnerPresenceText() {
   if (syncMode !== "server" || !role || !mySeat) return "";
-  const seat = nextSeat(mySeat);
-  const partner = presence[seat];
-  if (partner?.online) return ` • ${seatNames[seat]} online`;
-  if (typeof partner?.lastSeenAgoMs === "number") return ` • ${seatNames[seat]} last seen ${formatAgo(partner.lastSeenAgoMs)}`;
-  return ` • waiting for ${seatNames[seat]}`;
+  const others = seatsForGame().filter((seat) => seat !== mySeat);
+  const online = others.filter((seat) => presence[seat]?.online);
+  const waiting = others.filter((seat) => !presence[seat]?.online);
+  if (!waiting.length) return ` • ${online.map((seat) => seatNames[seat]).join(", ")} online`;
+  if (online.length) return ` • ${online.map((seat) => seatNames[seat]).join(", ")} online • waiting for ${waiting.map((seat) => seatNames[seat]).join(", ")}`;
+  if (waiting.length === 1 && typeof presence[waiting[0]]?.lastSeenAgoMs === "number") {
+    return ` • ${seatNames[waiting[0]]} last seen ${formatAgo(presence[waiting[0]].lastSeenAgoMs)}`;
+  }
+  return ` • waiting for ${waiting.map((seat) => seatNames[seat]).join(", ")}`;
 }
 
 function formatAgo(ms) {
@@ -696,7 +873,7 @@ function clearRoomCode() {
   selected.clear();
   drawnCardIds.clear();
   els.roomInput.value = "";
-  state = createGame();
+  state = createGame(null, selectedPlayerCount());
   setConnection(syncMode === "server" ? "Remote relay ready" : "Browser relay ready");
   render();
 }
@@ -776,7 +953,7 @@ function canTakeDiscard(seat) {
   if (isFirstUpCardAvailable()) return { ok: true, opening: true };
   if (isWild(top)) return { ok: false, reason: "Cannot pick up a wild card on top" };
   const matches = activeCards(seat).filter((card) => card.rank === top.rank && !isWild(card));
-  const hasMatchingMeld = state.players[seat].melds.some((meld) => meld.rank === top.rank);
+  const hasMatchingMeld = meldAreaForSeat(seat).melds.some((meld) => meld.rank === top.rank);
   if (matches.length < 2 && !hasMatchingMeld) {
     return { ok: false, reason: `Need two natural ${rankName(top.rank)}s or a matching meld` };
   }
@@ -795,9 +972,9 @@ function meldSelected(targetIndex = null) {
   if (!isMyTurn() || state.turnStage !== "play") return;
   const cards = selectedCards();
   if (!cards.length) return;
-  const player = state.players[mySeat];
+  const area = meldAreaForSeat(mySeat);
   const active = activeCards(mySeat);
-  const result = targetIndex === null ? validateNewMeld(cards, player) : validateAddMeld(cards, player.melds[targetIndex]);
+  const result = targetIndex === null ? validateNewMeld(cards, area) : validateAddMeld(cards, area.melds[targetIndex]);
   if (!result.ok) {
     state.message = result.reason;
     render();
@@ -805,18 +982,18 @@ function meldSelected(targetIndex = null) {
   }
   setActiveCards(mySeat, active.filter((card) => !selected.has(card.id)));
   if (targetIndex === null) {
-    player.melds.push({ rank: result.rank, cards });
+    area.melds.push({ rank: result.rank, cards });
   } else if (result.kill) {
-    const meld = player.melds[targetIndex];
+    const meld = area.melds[targetIndex];
     meld.killed = [...(meld.killed || []), ...cards];
   } else {
-    player.melds[targetIndex].cards.push(...cards);
+    area.melds[targetIndex].cards.push(...cards);
   }
-  if (!player.opened && openingTotal(player.melds) >= rule().open) player.opened = true;
+  if (!area.opened && openingTotal(area.melds) >= rule().open) area.opened = true;
   selected.clear();
   maybeMoveToFoot(mySeat);
-  if (!player.opened) {
-    state.message = `${seatNames[mySeat]} melded ${cards.length} cards. Opening total is ${openingTotal(player.melds)}/${rule().open}; meld another set before discarding.`;
+  if (!area.opened) {
+    state.message = `${seatNames[mySeat]} melded ${cards.length} cards. Opening total is ${openingTotal(area.melds)}/${rule().open}; meld another set before discarding.`;
   } else if (result.kill) {
     state.message = `${seatNames[mySeat]} killed ${cards.length} ${rankName(result.rank)}${cards.length === 1 ? "" : "s"}.`;
   } else {
@@ -846,8 +1023,9 @@ function discardSelected() {
     broadcast();
     return;
   }
-  if (!state.players[mySeat].opened && state.players[mySeat].melds.length > 0) {
-    state.message = `Opening total is ${openingTotal(state.players[mySeat].melds)}/${rule().open}. Meld another set before discarding.`;
+  const area = meldAreaForSeat(mySeat);
+  if (!area.opened && area.melds.length > 0) {
+    state.message = `Opening total is ${openingTotal(area.melds)}/${rule().open}. Meld another set before discarding.`;
     render();
     return;
   }
@@ -896,31 +1074,35 @@ function endTurn() {
 
 function finishRound(winner) {
   state.wentOut = winner;
-  seats.forEach((seat) => {
-    state.scores[seat] += scoreSeat(seat, winner);
+  scoreOwnersForGame().forEach((owner) => {
+    state.scores[owner] += scoreOwner(owner, winner);
   });
   state.turnStage = "complete";
   state.message = `${seatNames[winner]} WENT OUT. Round scored.`;
 }
 
-function scoreSeat(seat, winner) {
-  const player = state.players[seat];
+function scoreOwner(owner, winner) {
+  const area = meldArea(owner);
+  const winnerOwner = ownerForSeat(winner);
   let total = 0;
-  player.melds.forEach((meld) => {
+  area.melds.forEach((meld) => {
     total += scoredMeldCards(meld).reduce((sum, card) => sum + cardValue(card), 0);
     const book = bookType(meld);
     if (book === "clean") total += 500;
     if (book === "dirty") total += 300;
     if (book === "black3") total += 1000;
   });
-  const unplayed = [...player.hand, ...player.foot];
-  total -= unplayed.reduce((sum, card) => sum + cardValue(card), 0);
-  if (seat !== winner) total -= unplayed.filter(isRedThree).length * 500;
-  if (seat === winner) total += 100;
+  seatsForOwner(owner).forEach((seat) => {
+    const player = state.players[seat];
+    const unplayed = [...player.hand, ...player.foot];
+    total -= unplayed.reduce((sum, card) => sum + cardValue(card), 0);
+    if (owner !== winnerOwner) total -= unplayed.filter(isRedThree).length * 500;
+  });
+  if (owner === winnerOwner) total += 100;
   return total;
 }
 
-function validateNewMeld(cards, player) {
+function validateNewMeld(cards, area) {
   if (cards.length < 3) return { ok: false, reason: "A new meld needs at least 3 cards." };
   const naturals = cards.filter((card) => !isWild(card));
   if (!naturals.length) return { ok: false, reason: "A meld needs natural cards." };
@@ -930,7 +1112,7 @@ function validateNewMeld(cards, player) {
   if (rank === "3" && naturals.some((card) => card.suit === "H" || card.suit === "D")) return { ok: false, reason: "Only black 3s can make a book." };
   if (rank === "3" && cards.some(isWild)) return { ok: false, reason: "Black 3 book must be clean." };
   if (cards.length > 7) return { ok: false, reason: "A book tops out at 7 cards." };
-  if (player.melds.some((meld) => meld.rank === rank && meld.cards.length < 7)) {
+  if (area.melds.some((meld) => meld.rank === rank && meld.cards.length < 7)) {
     return { ok: false, reason: "Add to your open meld for that rank." };
   }
   if (!dirtyRatioOk(cards)) return { ok: false, reason: "Naturals must outnumber wild cards." };
@@ -963,7 +1145,7 @@ function dirtyRatioOk(cards) {
 
 function canGoOut(seat) {
   const player = state.players[seat];
-  const books = player.melds.map(bookType);
+  const books = meldAreaForSeat(seat).melds.map(bookType);
   const clean = books.filter((type) => type === "clean" || type === "black3").length;
   const dirty = books.filter((type) => type === "dirty").length;
   if (clean < rule().books || dirty < rule().books) return { ok: false };
@@ -1006,8 +1188,10 @@ function isRedThree(card) {
   return card.rank === "3" && (card.suit === "H" || card.suit === "D");
 }
 
-function nextSeat(seat) {
-  return seat === "south" ? "north" : "south";
+function nextSeat(seat, count = playerCountForGame()) {
+  const order = seatsForPlayerCount(count);
+  const index = order.indexOf(seat);
+  return order[(index + 1) % order.length] || hostSeat;
 }
 
 function isMyTurn() {
@@ -1453,15 +1637,18 @@ function playBellTone(start, frequency, peakGain, duration = 0.72, output = turn
 
 function render() {
   maybePlayTurnSound();
+  els.app.classList.toggle("partners-mode", isPartnersGame());
+  els.app.classList.toggle("two-player-mode", !isPartnersGame());
   els.hostBtn.disabled = Boolean(role);
   els.joinBtn.disabled = Boolean(role);
+  els.playerCountSelect.disabled = Boolean(role);
   els.copyBtn.disabled = !els.roomInput.value.trim();
   els.roomStatus.textContent = els.roomInput.value.trim().toUpperCase() || "-";
+  setSelectedPlayerCount(playerCountForGame());
+  renderSeatSelect();
   renderConnection();
-  els.seatStatus.textContent = mySeat ? seatNames[mySeat] : "Choose Host or Join";
-  els.southScore.textContent = state.scores.south;
-  els.northScore.textContent = state.scores.north;
-  els.roundStatus.textContent = `${state.round} · draw ${rule().draw}`;
+  els.seatStatus.textContent = mySeat ? `${seatNames[mySeat]}${isPartnersGame() ? ` • ${ownerName(ownerForSeat(mySeat))}` : ""}` : "Choose Host or Join";
+  renderScoreboard();
   els.stockCount.textContent = state.stock.length;
   els.discardTop.innerHTML = state.discard[0] ? cardMarkup(state.discard[0]) : "-";
   els.discardTop.className = state.discard[0] ? cardSuitClass(state.discard[0]) : "empty-discard";
@@ -1472,11 +1659,36 @@ function render() {
   els.handLabel.textContent = mySeat ? `Your ${state.players[mySeat].active}` : "Your cards";
   renderSeats();
   renderRoundEnd();
-  renderMelds("south", els.southMelds);
-  renderMelds("north", els.northMelds);
+  renderMeldPanels();
   renderHand();
   renderActions();
   saveLocalSession();
+}
+
+function renderSeatSelect() {
+  if (!els.seatSelect) return;
+  const current = els.seatSelect.value;
+  const options = joinableSeatsForGame();
+  els.seatSelect.innerHTML = options
+    .map((seat) => `<option value="${seat}">${seatNames[seat]}${isPartnersGame() ? ` • ${ownerName(ownerForSeat(seat))}` : ""}</option>`)
+    .join("");
+  els.seatSelect.value = options.includes(current) ? current : options[0] || "north";
+  els.seatSelect.disabled = Boolean(role);
+}
+
+function renderScoreboard() {
+  els.scoreboard.innerHTML = `
+    ${scoreOwnersForGame().map((owner) => `
+      <div>
+        <span>${ownerName(owner)}</span>
+        <strong>${scoreForOwner(owner)}</strong>
+      </div>
+    `).join("")}
+    <div>
+      <span>Round</span>
+      <strong>${state.round} · draw ${rule().draw}</strong>
+    </div>
+  `;
 }
 
 function renderRoundEnd() {
@@ -1485,7 +1697,7 @@ function renderRoundEnd() {
   if (!state.wentOut) return;
   els.roundEndPanel.innerHTML = `
     <div class="round-reveal-grid">
-      ${seats.map(roundRevealSeatMarkup).join("")}
+      ${seatsForGame().map(roundRevealSeatMarkup).join("")}
     </div>
   `;
 }
@@ -1528,17 +1740,27 @@ function remainingCardCount(player) {
 }
 
 function renderSeats() {
-  seats.forEach((seat) => {
-    const player = state.players[seat];
-    const meldTotal = openingTotal(player.melds);
-    const opened = player.opened || meldTotal >= rule().open;
-    const el = seat === "south" ? els.seatSouth : els.seatNorth;
-    el.classList.toggle("active-seat", state.currentTurn === seat && !state.wentOut);
-    el.classList.toggle("winner-seat", state.wentOut === seat);
-    el.innerHTML = `
+  els.seatPanels.innerHTML = "";
+  seatDisplayOrder().forEach((seat) => {
+    if (!state.players[seat]) return;
+    els.seatPanels.append(createSeatElement(seat));
+  });
+}
+
+function createSeatElement(seat) {
+  const player = state.players[seat];
+  const owner = ownerForSeat(seat);
+  const area = meldArea(owner);
+  const meldTotal = openingTotal(area.melds);
+  const opened = area.opened || meldTotal >= rule().open;
+  const el = document.createElement("div");
+  el.className = `player team-${owner}`;
+  el.classList.toggle("active-seat", state.currentTurn === seat && !state.wentOut);
+  el.classList.toggle("winner-seat", state.wentOut === seat);
+  el.innerHTML = `
       <div class="player-heading">
         <div class="player-name">${seatNames[seat]}${seat === mySeat ? " (you)" : ""}${state.wentOut === seat ? `<span class="winner-mini">Winner</span>` : ""}</div>
-        <div class="player-score"><span>Score</span><strong>${state.scores[seat]}</strong></div>
+        <div class="player-score"><span>${isPartnersGame() ? ownerName(owner) : "Score"}</span><strong>${scoreForOwner(owner)}</strong></div>
       </div>
       <div class="player-info-row">
         <span class="player-card-count">Hand ${player.hand.length} · Foot ${player.foot.length}</span>
@@ -1546,8 +1768,8 @@ function renderSeats() {
       </div>
       ${state.wentOut === seat ? fireworkMarkup() : ""}
     `;
-    el.append(createPlayerMeldBoard(seat));
-  });
+  if (!isPartnersGame()) el.append(createPlayerMeldBoard(owner));
+  return el;
 }
 
 function fireworkMarkup() {
@@ -1588,11 +1810,11 @@ function fireworkSparkMarkup(angle, index, radius) {
   return `<i class="firework-spark" style="--a: ${angle}deg; --r: ${distance}rem; --sd: ${delay}s; --t: ${duration}s;"></i>`;
 }
 
-function createPlayerMeldBoard(seat) {
+function createPlayerMeldBoard(owner) {
   const board = document.createElement("div");
   board.className = "player-meld-grid";
-  sortedMelds(seat).forEach(({ meld, index }) => {
-    board.append(createMeldElement(seat, meld, index));
+  sortedMelds(owner).forEach(({ meld, index }) => {
+    board.append(createMeldElement(owner, meld, index));
   });
   return board;
 }
@@ -1607,22 +1829,43 @@ function renderDiscardPreview() {
   });
 }
 
-function renderMelds(seat, container) {
-  container.innerHTML = "";
-  sortedMelds(seat).forEach(({ meld, index }) => {
-    container.append(createMeldElement(seat, meld, index));
+function renderMeldPanels() {
+  els.meldPanels.hidden = !isPartnersGame();
+  els.meldPanels.innerHTML = "";
+  if (!isPartnersGame()) return;
+  meldOwnersForGame().forEach((owner) => {
+    const area = meldArea(owner);
+    const meldTotal = openingTotal(area.melds);
+    const panel = document.createElement("div");
+    panel.className = `team-meld-panel team-${owner}`;
+    panel.innerHTML = `
+      <div class="team-meld-heading">
+        <h2>${ownerName(owner)} Melds</h2>
+        <span class="player-meld-total ${area.opened || meldTotal >= rule().open ? "open" : ""}">Meld ${meldTotal}/${rule().open}</span>
+      </div>
+      <div class="meld-grid"></div>
+    `;
+    renderMelds(owner, panel.querySelector(".meld-grid"));
+    els.meldPanels.append(panel);
   });
 }
 
-function sortedMelds(seat) {
-  return state.players[seat].melds
+function renderMelds(owner, container) {
+  container.innerHTML = "";
+  sortedMelds(owner).forEach(({ meld, index }) => {
+    container.append(createMeldElement(owner, meld, index));
+  });
+}
+
+function sortedMelds(owner) {
+  return meldArea(owner).melds
     .map((meld, index) => ({ meld, index }))
     .sort((a, b) => rankOrder[a.meld.rank] - rankOrder[b.meld.rank] || a.index - b.index);
 }
 
-function createMeldElement(seat, meld, index) {
+function createMeldElement(owner, meld, index) {
   const isCompleteBook = meld.cards.length >= 7;
-  const canPlayOnMeld = seat === mySeat && isMyTurn() && state.turnStage === "play";
+  const canPlayOnMeld = mySeat && owner === ownerForSeat(mySeat) && isMyTurn() && state.turnStage === "play";
   const item = document.createElement("div");
   item.className = `meld ${isCompleteBook ? "complete-book" : ""} ${canPlayOnMeld ? "meld-add-target" : ""}`;
   item.innerHTML = `
@@ -1775,7 +2018,7 @@ function cardMarkup(card) {
 
 function confirmNewRound() {
   stopWinnerSound();
-  const ok = window.confirm("Start a new round? This will end the current round for both players.");
+  const ok = window.confirm("Start a new round? This will end the current round for everyone in the room.");
   if (!ok) {
     render();
     return;
@@ -1788,7 +2031,7 @@ function confirmNewRound() {
 
 function confirmNewGame() {
   stopWinnerSound();
-  const ok = window.confirm("Start a new game? This will reset scores and the current round for both players.");
+  const ok = window.confirm("Start a new game? This will reset scores and the current round for everyone in the room.");
   if (!ok) {
     render();
     return;
@@ -1801,7 +2044,20 @@ function confirmNewGame() {
   broadcast();
 }
 
+function handlePlayerCountChange() {
+  if (role) {
+    setSelectedPlayerCount(playerCountForGame());
+    return;
+  }
+  stopWinnerSound(false);
+  state = createGame(null, selectedPlayerCount());
+  selected.clear();
+  drawnCardIds.clear();
+  render();
+}
+
 els.hostBtn.addEventListener("click", hostRoom);
+els.playerCountSelect.addEventListener("change", handlePlayerCountChange);
 els.joinBtn.addEventListener("click", joinRoom);
 els.clearRoomBtn.addEventListener("click", clearRoomCode);
 els.stockBtn.addEventListener("click", takeStock);

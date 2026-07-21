@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Remote Hand and Foot</title>
     <link rel="stylesheet" href="styles.css?v=20260718g" />
-    <link rel="stylesheet" href="handfoot.css?v=20260721x" />
+    <link rel="stylesheet" href="handfoot.css?v=20260721y" />
   </head>
   <body>
     <main class="app handfoot-app">
@@ -13,17 +13,28 @@
         <div>
           <p class="eyebrow">Remote Card Table</p>
           <h1>Hand & Foot</h1>
-          <p class="version-note">Hand & Foot real fireworks v20260721x</p>
+          <p class="version-note">Hand & Foot 2/4 player v20260721y</p>
         </div>
         <div class="room-panel">
           <a class="nav-button" href="index.html">Spades</a>
           <a class="nav-button" href="texas.html">Hold'em</a>
+          <label class="join-field">
+            <span>Players</span>
+            <select id="playerCountSelect">
+              <option value="2">2 players</option>
+              <option value="4">4 partners</option>
+            </select>
+          </label>
           <button id="hostBtn" type="button">Host room</button>
           <button id="copyBtn" type="button" disabled>Copy code</button>
           <button id="clearRoomBtn" type="button">Clear code</button>
           <label class="join-field">
             <span>Room code</span>
             <input id="roomInput" type="text" autocomplete="off" spellcheck="false" placeholder="CARDS-1234" />
+          </label>
+          <label class="join-field">
+            <span>Seat</span>
+            <select id="seatSelect"></select>
           </label>
           <button id="joinBtn" type="button">Join</button>
         </div>
@@ -44,28 +55,12 @@
         </div>
       </section>
 
-      <section class="scoreboard" aria-label="Scoreboard">
-        <div>
-          <span>South</span>
-          <strong id="southScore">0</strong>
-        </div>
-        <div>
-          <span>North</span>
-          <strong id="northScore">0</strong>
-        </div>
-        <div>
-          <span>Round</span>
-          <strong id="roundStatus">1</strong>
-        </div>
-      </section>
+      <section class="scoreboard" id="scoreboard" aria-label="Scoreboard"></section>
 
       <section class="round-end-panel" id="roundEndPanel" aria-live="polite"></section>
 
       <section class="hf-layout">
-        <aside class="hf-side">
-          <div class="player active-seat" id="seatNorth"></div>
-          <div class="player" id="seatSouth"></div>
-        </aside>
+        <aside class="hf-side" id="seatPanels"></aside>
 
         <section class="hf-table">
           <div class="hf-piles">
@@ -84,16 +79,7 @@
           <div class="message" id="gameMessage">Host a room, then share the room code with your partner.</div>
         </section>
 
-        <section class="hf-melds">
-          <div>
-            <h2>South Melds</h2>
-            <div id="southMelds" class="meld-grid"></div>
-          </div>
-          <div>
-            <h2>North Melds</h2>
-            <div id="northMelds" class="meld-grid"></div>
-          </div>
-        </section>
+        <section class="hf-melds" id="meldPanels"></section>
       </section>
 
       <section class="action-bar">
@@ -112,15 +98,17 @@
       <section class="guide">
         <h2>House rules in this table</h2>
         <ol>
-          <li>Six decks, two players, 11 cards in Hand and 11 in Foot.</li>
+          <li>Two-player rooms use six decks; four-player partner rooms use eight decks.</li>
+          <li>Every player gets 11 cards in Hand and 11 in Foot.</li>
           <li>Rounds draw 2, 3, 4, then 5 cards; opening melds are 50, 90, 120, then 150.</li>
           <li>Going out requires 2/3/4/5 clean books and the same number of dirty books.</li>
+          <li>In four-player rooms, North/South and East/West share meld piles and scores.</li>
           <li>Round 4 requires playing every final card; no discard to go out.</li>
           <li>Seven black 3s make a 1000-point book. Red 3s left when the opponent goes out are -500 each.</li>
         </ol>
       </section>
     </main>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-    <script src="handfoot.js?v=20260721x"></script>
+    <script src="handfoot.js?v=20260721y"></script>
   </body>
 </html>

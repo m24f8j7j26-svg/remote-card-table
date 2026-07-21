@@ -11,6 +11,22 @@
   text-decoration: none;
 }
 
+.handfoot-app select {
+  width: 8.8rem;
+  min-height: 2.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.45rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  padding: 0 0.65rem;
+}
+
+.handfoot-app select:disabled {
+  opacity: 0.55;
+}
+
 .round-end-panel {
   grid-column: 1 / -1;
   display: grid;
@@ -420,17 +436,42 @@
 }
 
 .hf-melds {
-  display: none;
-  grid-template-columns: 1fr;
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.6rem;
   align-self: stretch;
   padding: 0.65rem;
+}
+
+.hf-melds[hidden] {
+  display: none;
 }
 
 .hf-melds h2 {
   font-size: 0.85rem;
   margin: 0 0 0.4rem;
   color: var(--muted);
+}
+
+.team-meld-panel {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 0.55rem;
+}
+
+.team-meld-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+
+.team-meld-heading h2 {
+  margin: 0;
 }
 
 .meld-grid {
@@ -784,6 +825,19 @@
   text-align: left;
 }
 
+.handfoot-app.partners-mode .player {
+  min-height: 7.8rem;
+}
+
+.handfoot-app.partners-mode .player-name {
+  font-size: 0.96rem;
+}
+
+.handfoot-app.partners-mode .player-score span {
+  max-width: 5.8rem;
+  line-height: 1;
+}
+
 .player-heading {
   display: flex;
   align-items: baseline;
@@ -1019,6 +1073,7 @@
 @media (max-width: 780px) {
   .hf-layout,
   .hf-side,
+  .hf-melds,
   .round-reveal-grid {
     grid-template-columns: 1fr;
   }
