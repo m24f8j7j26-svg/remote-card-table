@@ -29,6 +29,8 @@
 }
 
 .round-reveal-seat {
+  position: relative;
+  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 0.55rem;
   background: rgba(13, 18, 15, 0.76);
@@ -41,6 +43,48 @@
   box-shadow:
     inset 0 0 0 2px rgba(240, 196, 107, 0.22),
     0 0 0 3px rgba(240, 196, 107, 0.18);
+}
+
+.round-reveal-seat > :not(.winner-fireworks),
+.handfoot-app .player > :not(.winner-fireworks) {
+  position: relative;
+  z-index: 1;
+}
+
+.winner-fireworks {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.winner-fireworks span {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, #ffffff 0 4%, var(--c) 5% 8%, transparent 9%),
+    repeating-conic-gradient(from 8deg, transparent 0 12deg, var(--c) 13deg 16deg, transparent 17deg 31deg);
+  filter: drop-shadow(0 0 0.45rem var(--c));
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.08) rotate(0deg);
+  animation: fireworkBurst 1.65s ease-out infinite;
+  animation-delay: var(--d);
+}
+
+.winner-fireworks span::after {
+  content: "";
+  position: absolute;
+  inset: 31%;
+  border: 2px solid var(--c);
+  border-radius: inherit;
+  opacity: 0.78;
+  animation: fireworkRing 1.65s ease-out infinite;
+  animation-delay: var(--d);
 }
 
 .round-reveal-heading,
@@ -677,6 +721,8 @@
 }
 
 .handfoot-app .player {
+  position: relative;
+  overflow: hidden;
   align-content: start;
   gap: 0.32rem;
   min-height: 15.5rem;
@@ -742,6 +788,44 @@
       0 0 0 4px rgba(240, 196, 107, 0.34),
       0 0 18px rgba(240, 196, 107, 0.5);
     transform: scale(1.08);
+  }
+}
+
+@keyframes fireworkBurst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.08) rotate(0deg);
+  }
+
+  14% {
+    opacity: 1;
+  }
+
+  72% {
+    opacity: 0.86;
+    transform: translate(-50%, -50%) scale(1) rotate(24deg);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.18) rotate(38deg);
+  }
+}
+
+@keyframes fireworkRing {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.28);
+  }
+
+  80% {
+    opacity: 0.18;
+    transform: scale(2.8);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(3.25);
   }
 }
 

@@ -72,6 +72,7 @@ let activeWinnerSoundKey = null;
 let stoppedWinnerSoundKey = null;
 let winnerSoundLoopTimer = null;
 let winnerSoundGain = null;
+let fireworkNoiseBuffer = null;
 let serverWriteInFlight = false;
 let queuedServerState = null;
 let serverRetryTimer = null;
@@ -1109,30 +1110,12 @@ function playJackpotSound() {
   const now = turnAudioContext.currentTime + 0.02;
   const output = createWinnerSoundOutput();
   if (!output) return false;
-  playBassThump(now, output);
   [
-    { at: 0.02, frequency: 1567.98 },
-    { at: 0.11, frequency: 1975.53 },
-    { at: 0.2, frequency: 2349.32 },
-    { at: 0.29, frequency: 2637.02 },
-  ].forEach(({ at, frequency }) => playCoinSparkle(now + at, frequency, output));
-  [
-    { at: 0.12, frequency: 523.25, peak: 0.2, duration: 0.18 },
-    { at: 0.28, frequency: 659.25, peak: 0.22, duration: 0.2 },
-    { at: 0.44, frequency: 783.99, peak: 0.23, duration: 0.22 },
-    { at: 0.6, frequency: 1046.5, peak: 0.26, duration: 0.26 },
-    { at: 0.84, frequency: 1318.51, peak: 0.22, duration: 0.2 },
-    { at: 0.98, frequency: 1567.98, peak: 0.2, duration: 0.2 },
-    { at: 1.12, frequency: 2093, peak: 0.21, duration: 0.24 },
-  ].forEach(({ at, frequency, peak, duration }) => playPrizeTone(now + at, frequency, peak, duration, output));
-  playSparkleSweep(now + 0.54, 880, 1760, 0.52, output);
-  playWinnerChord(now + 1.42, [523.25, 659.25, 783.99, 1046.5], 0.22, 0.96, output);
-  [
-    { at: 1.74, frequency: 2093 },
-    { at: 1.9, frequency: 2637.02 },
-    { at: 2.06, frequency: 3135.96 },
-  ].forEach(({ at, frequency }) => playCoinSparkle(now + at, frequency, output));
-  playWinnerChord(now + 2.18, [659.25, 783.99, 1046.5, 1318.51], 0.18, 0.72, output);
+    { at: 0, lift: 440, pop: 132, color: 1720 },
+    { at: 0.72, lift: 554.37, pop: 154, color: 2180 },
+    { at: 1.42, lift: 659.25, pop: 118, color: 2650 },
+  ].forEach(({ at, lift, pop, color }) => playFirework(now + at, lift, pop, color, output));
+  playFireworkFinale(now + 2.22, output);
   return true;
 }
 
@@ -1213,6 +1196,116 @@ function stopWinnerSoundNow() {
 
 function winnerSoundIsPlaying() {
   return Boolean(winnerSoundLoopTimer && activeWinnerSoundKey === jackpotSoundKey());
+}
+
+function playFirework(start, liftFrequency, popFrequency, sparkleFrequency, output = turnAudioContext.destination) {
+  playFireworkLift(start, liftFrequency, output);
+  playFireworkPop(start + 0.42, popFrequency, output);
+  playFireworkCrackle(start + 0.5, sparkleFrequency, output);
+  playFireworkSizzle(start + 0.54, sparkleFrequency * 0.72, output);
+}
+
+function playFireworkFinale(start, output = turnAudioContext.destination) {
+  [
+    { at: 0, lift: 493.88, pop: 145, color: 1900 },
+    { at: 0.2, lift: 622.25, pop: 168, color: 2500 },
+    { at: 0.4, lift: 739.99, pop: 128, color: 3050 },
+  ].forEach(({ at, lift, pop, color }) => playFirework(start + at, lift, pop, color, output));
+}
+
+function playFireworkLift(start, frequency, output = turnAudioContext.destination) {
+  const gain = turnAudioContext.createGain();
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(0.12, start + 0.04);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.38);
+  gain.connect(output);
+  const oscillator = turnAudioContext.createOscillator();
+  oscillator.type = "sine";
+  oscillator.frequency.setValueAtTime(frequency, start);
+  oscillator.frequency.exponentialRampToValueAtTime(frequency * 2.55, start + 0.34);
+  oscillator.connect(gain);
+  oscillator.start(start);
+  oscillator.stop(start + 0.4);
+}
+
+function playFireworkPop(start, frequency, output = turnAudioContext.destination) {
+  const boomGain = turnAudioContext.createGain();
+  boomGain.gain.setValueAtTime(0.0001, start);
+  boomGain.gain.exponentialRampToValueAtTime(0.42, start + 0.012);
+  boomGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.5);
+  boomGain.connect(output);
+  const boom = turnAudioContext.createOscillator();
+  boom.type = "triangle";
+  boom.frequency.setValueAtTime(frequency, start);
+  boom.frequency.exponentialRampToValueAtTime(frequency * 0.46, start + 0.42);
+  boom.connect(boomGain);
+  boom.start(start);
+  boom.stop(start + 0.54);
+
+  const burstGain = turnAudioContext.createGain();
+  burstGain.gain.setValueAtTime(0.0001, start);
+  burstGain.gain.exponentialRampToValueAtTime(0.36, start + 0.008);
+  burstGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.22);
+  const filter = turnAudioContext.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(900, start);
+  filter.frequency.exponentialRampToValueAtTime(160, start + 0.2);
+  filter.connect(output);
+  burstGain.connect(filter);
+  const noise = createNoiseSource();
+  noise.connect(burstGain);
+  noise.start(start);
+  noise.stop(start + 0.24);
+}
+
+function playFireworkCrackle(start, frequency, output = turnAudioContext.destination) {
+  for (let i = 0; i < 11; i += 1) {
+    const at = start + i * 0.045 + ((i * 17) % 9) * 0.003;
+    const gain = turnAudioContext.createGain();
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.exponentialRampToValueAtTime(0.08 + (i % 3) * 0.02, at + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.09);
+    const filter = turnAudioContext.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(frequency + i * 130, at);
+    filter.Q.setValueAtTime(9, at);
+    filter.connect(output);
+    gain.connect(filter);
+    const noise = createNoiseSource();
+    noise.connect(gain);
+    noise.start(at);
+    noise.stop(at + 0.11);
+  }
+}
+
+function playFireworkSizzle(start, frequency, output = turnAudioContext.destination) {
+  const gain = turnAudioContext.createGain();
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(0.11, start + 0.035);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.62);
+  const filter = turnAudioContext.createBiquadFilter();
+  filter.type = "highpass";
+  filter.frequency.setValueAtTime(frequency, start);
+  filter.connect(output);
+  gain.connect(filter);
+  const noise = createNoiseSource();
+  noise.connect(gain);
+  noise.start(start);
+  noise.stop(start + 0.64);
+}
+
+function createNoiseSource() {
+  if (!fireworkNoiseBuffer) {
+    const length = Math.max(1, Math.floor(turnAudioContext.sampleRate * 1.2));
+    fireworkNoiseBuffer = turnAudioContext.createBuffer(1, length, turnAudioContext.sampleRate);
+    const data = fireworkNoiseBuffer.getChannelData(0);
+    for (let i = 0; i < length; i += 1) {
+      data[i] = Math.random() * 2 - 1;
+    }
+  }
+  const source = turnAudioContext.createBufferSource();
+  source.buffer = fireworkNoiseBuffer;
+  return source;
 }
 
 function playBassThump(start, output = turnAudioContext.destination) {
@@ -1352,6 +1445,7 @@ function roundRevealSeatMarkup(seat) {
   const isWinner = seat === state.wentOut;
   return `
     <article class="round-reveal-seat ${isWinner ? "went-out" : ""}">
+      ${isWinner ? fireworkMarkup() : ""}
       <div class="round-reveal-heading">
         <h2>${seatNames[seat]}${seat === mySeat ? " (you)" : ""}${isWinner ? `<span class="winner-badge">Winner</span>` : ""}</h2>
         <span>${remainingCardCount(player)} left</span>
@@ -1400,9 +1494,22 @@ function renderSeats() {
         <span class="player-card-count">Hand ${player.hand.length} · Foot ${player.foot.length}</span>
         <span class="player-meld-total ${opened ? "open" : ""}">Meld ${meldTotal}/${rule().open}</span>
       </div>
+      ${state.wentOut === seat ? fireworkMarkup() : ""}
     `;
     el.append(createPlayerMeldBoard(seat));
   });
+}
+
+function fireworkMarkup() {
+  return `
+    <div class="winner-fireworks" aria-hidden="true">
+      <span style="--x: 18%; --y: 24%; --c: #ffd86b; --d: 0s;"></span>
+      <span style="--x: 78%; --y: 18%; --c: #8ed1ff; --d: 0.18s;"></span>
+      <span style="--x: 52%; --y: 44%; --c: #ff9b8d; --d: 0.34s;"></span>
+      <span style="--x: 28%; --y: 72%; --c: #a8ffbf; --d: 0.54s;"></span>
+      <span style="--x: 86%; --y: 68%; --c: #fff6d6; --d: 0.72s;"></span>
+    </div>
+  `;
 }
 
 function createPlayerMeldBoard(seat) {
@@ -1444,7 +1551,7 @@ function createMeldElement(seat, meld, index) {
   item.className = `meld ${isCompleteBook ? "complete-book" : ""} ${canPlayOnMeld ? "meld-add-target" : ""}`;
   item.innerHTML = `
     <div class="meld-title">
-      <span class="meld-count">${scoredMeldCards(meld).length}</span>
+      <span class="meld-count" title="normal/wild">${meldCountLabel(meld)}</span>
       <span class="meld-rank">${rankName(meld.rank)}</span>
     </div>
     ${isCompleteBook ? completeMeldMarkup(meld) : `<div class="meld-cards">${displayMeldCards(meld).map(meldCardMarkup).join("")}</div>`}
@@ -1461,6 +1568,13 @@ function createMeldElement(seat, meld, index) {
     });
   }
   return item;
+}
+
+function meldCountLabel(meld) {
+  const cards = scoredMeldCards(meld);
+  const naturals = cards.filter((card) => !isWild(card) && card.rank === meld.rank).length;
+  const wilds = cards.filter(isWild).length;
+  return `${naturals}/${wilds}`;
 }
 
 function displayMeldCards(meld) {
