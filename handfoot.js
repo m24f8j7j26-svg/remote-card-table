@@ -169,7 +169,7 @@ function createGame(previous = null) {
     currentTurn: starter,
     turnStage: "firstDiscard",
     wentOut: null,
-    message: `${seatNames[starter]} may take the first discard card, or skip it and draw normally.`,
+    message: `${seatNames[starter]} may take the first up-card, or skip it and draw normally.`,
   };
 }
 
@@ -581,7 +581,7 @@ function takeStock() {
     activeCards(mySeat).push(...drawn);
     markDrawn(drawn);
     state.turnStage = "play";
-    state.message = `${seatNames[mySeat]} skipped the first discard and drew ${amount} from stock.`;
+    state.message = `${seatNames[mySeat]} skipped the first up-card and drew ${amount} from stock.`;
     broadcast();
     return;
   }
@@ -601,14 +601,14 @@ function takeFirstDiscard() {
   activeCards(mySeat).push(card);
   markDrawn([card]);
   state.turnStage = "firstDiscardTaken";
-  state.message = `${seatNames[mySeat]} took the first discard. Discard one card, then draw normally.`;
+  state.message = `${seatNames[mySeat]} took the first up-card. Discard one card, then draw normally.`;
   broadcast();
 }
 
 function skipFirstDiscard() {
   if (!isMyTurn() || state.turnStage !== "firstDiscard") return;
   state.turnStage = "draw";
-  state.message = `${seatNames[mySeat]} skipped the first discard. Draw from stock or pick up the discard pile.`;
+  state.message = `${seatNames[mySeat]} skipped the first up-card. Draw from stock or pick up the discard pile.`;
   broadcast();
 }
 
@@ -636,6 +636,7 @@ function markDrawn(cards) {
 function canTakeDiscard(seat) {
   const top = state.discard[0];
   if (!top) return { ok: false, reason: "Discard is empty" };
+  if (state.turnStage === "firstDiscard") return { ok: true };
   if (isWild(top)) return { ok: false, reason: "Cannot pick up a wild card on top" };
   const matches = activeCards(seat).filter((card) => card.rank === top.rank && !isWild(card));
   const hasMatchingMeld = state.players[seat].melds.some((meld) => meld.rank === top.rank);
@@ -704,7 +705,7 @@ function discardSelected() {
     drawnCardIds.delete(card.id);
     selected.clear();
     state.turnStage = "draw";
-    state.message = `${seatNames[mySeat]} returned one card after taking the first discard. Draw normally.`;
+    state.message = `${seatNames[mySeat]} returned one card after taking the first up-card. Draw normally.`;
     broadcast();
     return;
   }
@@ -898,19 +899,24 @@ function playTurnSound() {
   if (!turnAudioContext) return;
   turnAudioContext.resume?.();
   const now = turnAudioContext.currentTime;
-  playBellTone(now, 880, 0.26);
-  playBellTone(now + 0.46, 587.33, 0.3);
+  [
+    { at: 0, frequency: 659.25, peak: 0.22, duration: 0.32 },
+    { at: 0.13, frequency: 783.99, peak: 0.2, duration: 0.34 },
+    { at: 0.28, frequency: 1046.5, peak: 0.24, duration: 0.46 },
+    { at: 0.56, frequency: 523.25, peak: 0.28, duration: 0.72 },
+  ].forEach(({ at, frequency, peak, duration }) => playBellTone(now + at, frequency, peak, duration));
 }
 
-function playBellTone(start, frequency, peakGain) {
+function playBellTone(start, frequency, peakGain, duration = 0.72) {
   const toneGain = turnAudioContext.createGain();
   toneGain.gain.setValueAtTime(0.0001, start);
   toneGain.gain.exponentialRampToValueAtTime(peakGain, start + 0.025);
-  toneGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.82);
+  toneGain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
   toneGain.connect(turnAudioContext.destination);
   [
     { frequency, level: 1 },
     { frequency: frequency * 1.5, level: 0.34 },
+    { frequency: frequency * 2, level: 0.18 },
   ].forEach(({ frequency: partialFrequency, level }) => {
     const oscillator = turnAudioContext.createOscillator();
     const partialGain = turnAudioContext.createGain();
@@ -920,7 +926,7 @@ function playBellTone(start, frequency, peakGain) {
     oscillator.connect(partialGain);
     partialGain.connect(toneGain);
     oscillator.start(start);
-    oscillator.stop(start + 0.84);
+    oscillator.stop(start + duration + 0.02);
   });
 }
 
@@ -1094,7 +1100,7 @@ function renderActions() {
     return;
   }
   if (isMyTurn() && state.turnStage === "firstDiscard") {
-    addAction("Take shown discard", takeFirstDiscard);
+    addAction("Take first up-card", takeFirstDiscard);
     addAction("Skip and choose draw", skipFirstDiscard);
   }
   if (isMyTurn() && state.turnStage === "firstDiscardTaken") {
@@ -1112,7 +1118,7 @@ function renderActions() {
 }
 
 function turnStageLabel() {
-  if (state.turnStage === "firstDiscard") return "first discard";
+  if (state.turnStage === "firstDiscard") return "first up-card";
   if (state.turnStage === "firstDiscardTaken") return "return discard";
   return state.turnStage;
 }
