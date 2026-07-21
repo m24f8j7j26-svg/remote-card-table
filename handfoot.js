@@ -886,11 +886,9 @@ function renderMelds(seat, container) {
   state.players[seat].melds.forEach((meld, index) => {
     const item = document.createElement("div");
     item.className = "meld";
-    const type = bookType(meld);
     item.innerHTML = `
       <div class="meld-title"><span>${rankName(meld.rank)}</span><span>${meld.cards.length}/7</span></div>
-      <div class="meld-meta">${type} · ${meld.cards.filter(isWild).length} wild</div>
-      <div class="meld-meta">${meld.cards.map(cardLabel).join(" ")}</div>
+      <div class="meld-cards">${meld.cards.map(meldCardMarkup).join("")}</div>
     `;
     if (seat === mySeat && isMyTurn() && state.turnStage === "play") {
       const button = document.createElement("button");
@@ -901,6 +899,10 @@ function renderMelds(seat, container) {
     }
     container.append(item);
   });
+}
+
+function meldCardMarkup(card) {
+  return `<span class="meld-card ${cardSuitClass(card)}" title="${cardLabel(card)}">${cardMarkup(card)}</span>`;
 }
 
 function renderHand() {

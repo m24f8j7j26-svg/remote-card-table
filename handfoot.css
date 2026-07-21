@@ -184,10 +184,50 @@
   font-weight: 900;
 }
 
-.meld-meta {
-  color: var(--muted);
-  font-size: 0.76rem;
-  margin-top: 0.18rem;
+.meld-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.24rem;
+  margin-top: 0.42rem;
+}
+
+.meld-card {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.12rem;
+  min-height: 2.92rem;
+  border: 1px solid rgba(25, 25, 25, 0.22);
+  border-radius: 0.36rem;
+  background:
+    linear-gradient(145deg, #ffffff 0%, #fffaf0 72%, #f1eadc 100%);
+  color: var(--card-ink);
+  font-size: 0.74rem;
+  font-weight: 950;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.18);
+}
+
+.meld-card.red {
+  color: var(--red);
+}
+
+.meld-card.suit-c {
+  color: #145f45;
+}
+
+.meld-card .rank {
+  position: absolute;
+  left: 0.22rem;
+  top: 0.18rem;
+  font-size: 0.62rem;
+  line-height: 1;
+}
+
+.meld-card .suit {
+  color: currentColor;
+  font-size: 1.18rem;
+  line-height: 1;
 }
 
 .hf-hand {
