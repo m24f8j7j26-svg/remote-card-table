@@ -64,6 +64,7 @@ let drawnCardIds = new Set();
 const savedSession = loadLocalSession();
 let state = normalizeState(savedSession?.state);
 let lastObservedTurnSeat = state.currentTurn;
+let lastObservedWentOut = state.wentOut;
 let turnAudioContext = null;
 let serverWriteInFlight = false;
 let queuedServerState = null;
@@ -1008,10 +1009,14 @@ function isMyTurn() {
 function maybePlayTurnSound() {
   if (!mySeat) {
     lastObservedTurnSeat = state.currentTurn;
+    lastObservedWentOut = state.wentOut;
     return;
   }
+  const roundJustEnded = !lastObservedWentOut && state.wentOut;
   const becameMyTurn = lastObservedTurnSeat !== state.currentTurn && state.currentTurn === mySeat && !state.wentOut;
   lastObservedTurnSeat = state.currentTurn;
+  lastObservedWentOut = state.wentOut;
+  if (roundJustEnded) playJackpotSound();
   if (becameMyTurn) playTurnSound();
 }
 
@@ -1033,6 +1038,37 @@ function playTurnSound() {
     { at: 0.28, frequency: 1046.5, peak: 0.24, duration: 0.46 },
     { at: 0.56, frequency: 523.25, peak: 0.28, duration: 0.72 },
   ].forEach(({ at, frequency, peak, duration }) => playBellTone(now + at, frequency, peak, duration));
+}
+
+function playJackpotSound() {
+  if (!turnAudioContext) return;
+  turnAudioContext.resume?.();
+  const now = turnAudioContext.currentTime;
+  [
+    { at: 0, frequency: 523.25, peak: 0.19, duration: 0.15 },
+    { at: 0.12, frequency: 659.25, peak: 0.2, duration: 0.15 },
+    { at: 0.24, frequency: 783.99, peak: 0.22, duration: 0.16 },
+    { at: 0.36, frequency: 1046.5, peak: 0.24, duration: 0.18 },
+    { at: 0.58, frequency: 1318.51, peak: 0.2, duration: 0.12 },
+    { at: 0.7, frequency: 1567.98, peak: 0.18, duration: 0.12 },
+  ].forEach(({ at, frequency, peak, duration }) => playPrizeTone(now + at, frequency, peak, duration));
+  playBellTone(now + 0.88, 523.25, 0.28, 0.62);
+  playBellTone(now + 0.96, 659.25, 0.22, 0.56);
+  playBellTone(now + 1.04, 783.99, 0.2, 0.5);
+}
+
+function playPrizeTone(start, frequency, peakGain, duration) {
+  const toneGain = turnAudioContext.createGain();
+  toneGain.gain.setValueAtTime(0.0001, start);
+  toneGain.gain.exponentialRampToValueAtTime(peakGain, start + 0.012);
+  toneGain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  toneGain.connect(turnAudioContext.destination);
+  const oscillator = turnAudioContext.createOscillator();
+  oscillator.type = "triangle";
+  oscillator.frequency.setValueAtTime(frequency, start);
+  oscillator.connect(toneGain);
+  oscillator.start(start);
+  oscillator.stop(start + duration + 0.02);
 }
 
 function playBellTone(start, frequency, peakGain, duration = 0.72) {
@@ -1091,10 +1127,6 @@ function renderRoundEnd() {
   els.roundEndPanel.hidden = !state.wentOut;
   if (!state.wentOut) return;
   els.roundEndPanel.innerHTML = `
-    <div class="round-end-banner">
-      <span>Round complete</span>
-      <strong>${seatNames[state.wentOut]} went out</strong>
-    </div>
     <div class="round-reveal-grid">
       ${seats.map(roundRevealSeatMarkup).join("")}
     </div>
@@ -1103,10 +1135,11 @@ function renderRoundEnd() {
 
 function roundRevealSeatMarkup(seat) {
   const player = state.players[seat];
+  const isWinner = seat === state.wentOut;
   return `
-    <article class="round-reveal-seat ${seat === state.wentOut ? "went-out" : ""}">
+    <article class="round-reveal-seat ${isWinner ? "went-out" : ""}">
       <div class="round-reveal-heading">
-        <h2>${seatNames[seat]}${seat === mySeat ? " (you)" : ""}</h2>
+        <h2>${seatNames[seat]}${seat === mySeat ? " (you)" : ""}${isWinner ? `<span class="winner-badge">Winner</span>` : ""}</h2>
         <span>${remainingCardCount(player)} left</span>
       </div>
       ${roundRevealPileMarkup("Hand", player.hand)}
@@ -1143,9 +1176,10 @@ function renderSeats() {
     const opened = player.opened || meldTotal >= rule().open;
     const el = seat === "south" ? els.seatSouth : els.seatNorth;
     el.classList.toggle("active-seat", state.currentTurn === seat && !state.wentOut);
+    el.classList.toggle("winner-seat", state.wentOut === seat);
     el.innerHTML = `
       <div class="player-heading">
-        <div class="player-name">${seatNames[seat]}${seat === mySeat ? " (you)" : ""}</div>
+        <div class="player-name">${seatNames[seat]}${seat === mySeat ? " (you)" : ""}${state.wentOut === seat ? `<span class="winner-mini">Winner</span>` : ""}</div>
         <div class="player-score"><span>Score</span><strong>${state.scores[seat]}</strong></div>
       </div>
       <div class="player-info-row">
