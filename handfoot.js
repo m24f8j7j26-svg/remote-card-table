@@ -31,6 +31,7 @@ const els = {
   southScore: document.querySelector("#southScore"),
   northScore: document.querySelector("#northScore"),
   roundStatus: document.querySelector("#roundStatus"),
+  roundEndPanel: document.querySelector("#roundEndPanel"),
   seatNorth: document.querySelector("#seatNorth"),
   seatSouth: document.querySelector("#seatSouth"),
   stockBtn: document.querySelector("#stockBtn"),
@@ -890,7 +891,7 @@ function finishRound(winner) {
     state.scores[seat] += scoreSeat(seat, winner);
   });
   state.turnStage = "complete";
-  state.message = `${seatNames[winner]} went out. Round scored.`;
+  state.message = `${seatNames[winner]} WENT OUT. Round scored.`;
 }
 
 function scoreSeat(seat, winner) {
@@ -1077,11 +1078,62 @@ function render() {
   els.turnStatus.textContent = state.wentOut ? "Round complete" : `${seatNames[state.currentTurn]} ${turnStageLabel()}`;
   els.handLabel.textContent = mySeat ? `Your ${state.players[mySeat].active}` : "Your cards";
   renderSeats();
+  renderRoundEnd();
   renderMelds("south", els.southMelds);
   renderMelds("north", els.northMelds);
   renderHand();
   renderActions();
   saveLocalSession();
+}
+
+function renderRoundEnd() {
+  els.roundEndPanel.innerHTML = "";
+  els.roundEndPanel.hidden = !state.wentOut;
+  if (!state.wentOut) return;
+  els.roundEndPanel.innerHTML = `
+    <div class="round-end-banner">
+      <span>Round complete</span>
+      <strong>${seatNames[state.wentOut]} went out</strong>
+    </div>
+    <div class="round-reveal-grid">
+      ${seats.map(roundRevealSeatMarkup).join("")}
+    </div>
+  `;
+}
+
+function roundRevealSeatMarkup(seat) {
+  const player = state.players[seat];
+  return `
+    <article class="round-reveal-seat ${seat === state.wentOut ? "went-out" : ""}">
+      <div class="round-reveal-heading">
+        <h2>${seatNames[seat]}${seat === mySeat ? " (you)" : ""}</h2>
+        <span>${remainingCardCount(player)} left</span>
+      </div>
+      ${roundRevealPileMarkup("Hand", player.hand)}
+      ${roundRevealPileMarkup("Foot", player.foot)}
+    </article>
+  `;
+}
+
+function roundRevealPileMarkup(label, cards) {
+  const sorted = sortCards(cards || []);
+  return `
+    <div class="round-reveal-pile">
+      <div class="round-reveal-pile-title">
+        <span>${label}</span>
+        <strong>${sorted.length}</strong>
+      </div>
+      <div class="round-reveal-cards">${sorted.length ? sorted.map(revealCardMarkup).join("") : `<span class="round-reveal-empty">empty</span>`}</div>
+    </div>
+  `;
+}
+
+function revealCardMarkup(card) {
+  return `<span class="round-reveal-card ${cardSuitClass(card)}" title="${cardLabel(card)}">${cardMarkup(card)}</span>`;
+}
+
+function remainingCardCount(player) {
+  return (player.hand || []).length + (player.foot || []).length;
 }
 
 function renderSeats() {
