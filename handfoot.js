@@ -54,6 +54,7 @@ let presence = {};
 let connectionText = "Not connected";
 let pollFailures = 0;
 let selected = new Set();
+let drawnCardIds = new Set();
 const savedSession = loadLocalSession();
 let state = normalizeState(savedSession?.state);
 let serverWriteInFlight = false;
@@ -560,6 +561,7 @@ function clearRoomCode() {
   role = null;
   mySeat = null;
   selected.clear();
+  drawnCardIds.clear();
   els.roomInput.value = "";
   state = createGame();
   setConnection(syncMode === "server" ? "Remote relay ready" : "Browser relay ready");
@@ -570,7 +572,9 @@ function takeStock() {
   if (!isMyTurn()) return;
   if (state.turnStage === "firstDiscard") {
     const amount = Math.min(rule().draw, state.stock.length);
-    activeCards(mySeat).push(...state.stock.splice(0, amount));
+    const drawn = state.stock.splice(0, amount);
+    activeCards(mySeat).push(...drawn);
+    markDrawn(drawn);
     state.turnStage = "play";
     state.message = `${seatNames[mySeat]} skipped the first discard and drew ${amount} from stock.`;
     broadcast();
@@ -578,7 +582,9 @@ function takeStock() {
   }
   if (state.turnStage !== "draw") return;
   const amount = Math.min(rule().draw, state.stock.length);
-  activeCards(mySeat).push(...state.stock.splice(0, amount));
+  const drawn = state.stock.splice(0, amount);
+  activeCards(mySeat).push(...drawn);
+  markDrawn(drawn);
   state.turnStage = "play";
   state.message = `${seatNames[mySeat]} drew ${amount} from stock.`;
   broadcast();
@@ -588,6 +594,7 @@ function takeFirstDiscard() {
   if (!isMyTurn() || state.turnStage !== "firstDiscard" || !state.discard[0]) return;
   const card = state.discard.shift();
   activeCards(mySeat).push(card);
+  markDrawn([card]);
   state.turnStage = "firstDiscardTaken";
   state.message = `${seatNames[mySeat]} took the first discard. Discard one card, then draw normally.`;
   broadcast();
@@ -603,10 +610,16 @@ function skipFirstDiscard() {
 function takeDiscard() {
   if (!isMyTurn() || state.turnStage !== "draw" || !canTakeDiscard(mySeat).ok) return;
   const count = Math.min(5, state.discard.length);
-  activeCards(mySeat).push(...state.discard.splice(0, count));
+  const drawn = state.discard.splice(0, count);
+  activeCards(mySeat).push(...drawn);
+  markDrawn(drawn);
   state.turnStage = "play";
   state.message = `${seatNames[mySeat]} picked up ${count} from discard.`;
   broadcast();
+}
+
+function markDrawn(cards) {
+  drawnCardIds = new Set(cards.map((card) => card.id));
 }
 
 function canTakeDiscard(seat) {
@@ -641,6 +654,9 @@ function meldSelected(targetIndex = null) {
   setActiveCards(mySeat, active.filter((card) => !selected.has(card.id)));
   if (targetIndex === null) {
     player.melds.push({ rank: result.rank, cards });
+  } else if (result.kill) {
+    const meld = player.melds[targetIndex];
+    meld.killed = [...(meld.killed || []), ...cards];
   } else {
     player.melds[targetIndex].cards.push(...cards);
   }
@@ -649,6 +665,8 @@ function meldSelected(targetIndex = null) {
   maybeMoveToFoot(mySeat);
   if (!player.opened) {
     state.message = `${seatNames[mySeat]} melded ${cards.length} cards. Opening total is ${openingTotal(player.melds)}/${rule().open}; meld another set before discarding.`;
+  } else if (result.kill) {
+    state.message = `${seatNames[mySeat]} killed ${cards.length} ${rankName(result.rank)}${cards.length === 1 ? "" : "s"}.`;
   } else {
     state.message = `${seatNames[mySeat]} melded ${cards.length} cards.`;
   }
@@ -669,6 +687,7 @@ function discardSelected() {
     const card = cards[0];
     setActiveCards(mySeat, activeCards(mySeat).filter((item) => item.id !== card.id));
     state.discard.unshift(card);
+    drawnCardIds.delete(card.id);
     selected.clear();
     state.turnStage = "draw";
     state.message = `${seatNames[mySeat]} returned one card after taking the first discard. Draw normally.`;
@@ -717,6 +736,7 @@ function maybeFinishAfterPlay(seat, discarded) {
 }
 
 function endTurn() {
+  drawnCardIds.clear();
   state.currentTurn = nextSeat(state.currentTurn);
   state.turnStage = "draw";
   state.message = `${seatNames[state.currentTurn]} to draw.`;
@@ -735,7 +755,7 @@ function scoreSeat(seat, winner) {
   const player = state.players[seat];
   let total = 0;
   player.melds.forEach((meld) => {
-    total += meld.cards.reduce((sum, card) => sum + cardValue(card), 0);
+    total += scoredMeldCards(meld).reduce((sum, card) => sum + cardValue(card), 0);
     const book = bookType(meld);
     if (book === "clean") total += 500;
     if (book === "dirty") total += 300;
@@ -765,13 +785,20 @@ function validateNewMeld(cards, player) {
 
 function validateAddMeld(cards, meld) {
   if (!meld) return { ok: false, reason: "Choose a meld first." };
-  if (meld.cards.length >= 7) return { ok: false, reason: "That book is already complete." };
+  if (meld.cards.length >= 7) return validateKilledCards(cards, meld);
   if (meld.cards.length + cards.length > 7) return { ok: false, reason: "A book can only have 7 cards." };
   const bad = cards.some((card) => !isWild(card) && card.rank !== meld.rank);
   if (bad) return { ok: false, reason: "Cards must match the meld rank." };
   if (meld.rank === "3" && cards.some((card) => isWild(card) || isRedThree(card))) return { ok: false, reason: "Black 3 books use only black 3s." };
   if (!dirtyRatioOk([...meld.cards, ...cards])) return { ok: false, reason: "Naturals must outnumber wild cards." };
   return { ok: true, rank: meld.rank };
+}
+
+function validateKilledCards(cards, meld) {
+  if (cards.some(isWild)) return { ok: false, reason: "Kill matching natural cards only." };
+  if (cards.some((card) => card.rank !== meld.rank)) return { ok: false, reason: `Kill ${rankName(meld.rank)}s on that book.` };
+  if (meld.rank === "3" && cards.some(isRedThree)) return { ok: false, reason: "Only black 3s can be killed on a black 3 book." };
+  return { ok: true, rank: meld.rank, kill: true };
 }
 
 function dirtyRatioOk(cards) {
@@ -797,7 +824,11 @@ function bookType(meld) {
 }
 
 function openingTotal(melds) {
-  return melds.flatMap((meld) => meld.cards).reduce((sum, card) => sum + cardValue(card), 0);
+  return melds.flatMap(scoredMeldCards).reduce((sum, card) => sum + cardValue(card), 0);
+}
+
+function scoredMeldCards(meld) {
+  return [...meld.cards, ...(meld.killed || [])];
 }
 
 function selectedCards() {
@@ -903,17 +934,18 @@ function sortedMelds(seat) {
 }
 
 function createMeldElement(seat, meld, index) {
-  const canAddToMeld = seat === mySeat && isMyTurn() && state.turnStage === "play" && meld.cards.length < 7;
+  const isCompleteBook = meld.cards.length >= 7;
+  const canPlayOnMeld = seat === mySeat && isMyTurn() && state.turnStage === "play";
   const item = document.createElement("div");
-  item.className = `meld ${meld.cards.length >= 7 ? "complete-book" : ""} ${canAddToMeld ? "meld-add-target" : ""}`;
+  item.className = `meld ${isCompleteBook ? "complete-book" : ""} ${canPlayOnMeld ? "meld-add-target" : ""}`;
   item.innerHTML = `
     <div class="meld-title"><span>${rankName(meld.rank)}</span></div>
-    ${meld.cards.length >= 7 ? completeMeldMarkup(meld) : `<div class="meld-cards">${displayMeldCards(meld).map(meldCardMarkup).join("")}</div>`}
+    ${isCompleteBook ? completeMeldMarkup(meld) : `<div class="meld-cards">${displayMeldCards(meld).map(meldCardMarkup).join("")}</div>`}
   `;
-  if (canAddToMeld) {
+  if (canPlayOnMeld) {
     item.tabIndex = 0;
     item.role = "button";
-    item.ariaLabel = `Add selected cards to ${rankName(meld.rank)}`;
+    item.ariaLabel = `${isCompleteBook ? "Kill" : "Add"} selected cards ${isCompleteBook ? "on" : "to"} ${rankName(meld.rank)}`;
     item.addEventListener("click", () => meldSelected(index));
     item.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") return;
@@ -932,14 +964,21 @@ function displayMeldCards(meld) {
 }
 
 function completeMeldMarkup(meld) {
-  const topCard = displayMeldCards(meld)[0];
+  const topCard = completeBookTopCard(meld);
+  const killedCount = (meld.killed || []).length;
   return `
-    <div class="complete-book-pile ${bookType(meld)}" title="${rankName(meld.rank)} complete book">
+    <div class="complete-book-pile ${bookType(meld)}" title="${rankName(meld.rank)} complete book${killedCount ? `, ${killedCount} killed` : ""}">
       <span class="book-card book-card-back"></span>
       <span class="book-card book-card-middle"></span>
       <span class="book-card book-card-top ${cardSuitClass(topCard)}">${cardMarkup(topCard)}</span>
+      ${killedCount ? `<span class="book-kill-count">+${killedCount}</span>` : ""}
     </div>
   `;
+}
+
+function completeBookTopCard(meld) {
+  const naturals = sortCards(meld.cards.filter((card) => !isWild(card)));
+  return naturals[0] || displayMeldCards(meld)[0];
 }
 
 function meldCardMarkup(card) {
@@ -952,7 +991,7 @@ function renderHand() {
   sortCards(activeCards(mySeat)).forEach((card) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `card ${cardSuitClass(card)} ${isWild(card) ? "wild" : ""} ${isRedThree(card) ? "red-three" : ""} ${selected.has(card.id) ? "selected" : ""}`;
+    button.className = `card ${cardSuitClass(card)} ${isWild(card) ? "wild" : ""} ${isRedThree(card) ? "red-three" : ""} ${drawnCardIds.has(card.id) && isMyTurn() ? "drawn-card" : ""} ${selected.has(card.id) ? "selected" : ""}`;
     button.innerHTML = cardMarkup(card);
     button.addEventListener("click", () => {
       if (selected.has(card.id)) selected.delete(card.id);
@@ -1039,6 +1078,7 @@ function confirmNewRound() {
   if (!ok) return;
   state = createGame(state);
   selected.clear();
+  drawnCardIds.clear();
   broadcast();
 }
 
@@ -1049,6 +1089,7 @@ function confirmNewGame() {
   state = createGame();
   state.revision = previousRevision;
   selected.clear();
+  drawnCardIds.clear();
   broadcast();
 }
 

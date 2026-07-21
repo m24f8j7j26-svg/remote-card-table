@@ -342,12 +342,53 @@
   line-height: 1;
 }
 
+.book-kill-count {
+  position: absolute;
+  right: -0.12rem;
+  bottom: -0.12rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.32rem;
+  min-height: 1.32rem;
+  border: 2px solid rgba(13, 18, 15, 0.86);
+  border-radius: 999px;
+  background: var(--gold);
+  color: #171007;
+  font-size: 0.68rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
 .hf-hand {
   grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
 }
 
 .card.selected {
   outline: 4px solid var(--blue);
+}
+
+.card.drawn-card {
+  border-color: rgba(240, 196, 107, 0.9);
+  box-shadow:
+    0 0 0 3px rgba(240, 196, 107, 0.38),
+    0 8px 18px rgba(0, 0, 0, 0.18);
+}
+
+.card.drawn-card::after {
+  content: "new";
+  position: absolute;
+  right: 0.22rem;
+  bottom: 0.22rem;
+  border-radius: 999px;
+  background: var(--gold);
+  color: #171007;
+  font-size: 0.54rem;
+  font-weight: 950;
+  line-height: 1;
+  padding: 0.16rem 0.24rem;
+  text-transform: uppercase;
 }
 
 .card.wild .suit {
