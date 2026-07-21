@@ -857,18 +857,26 @@ function render() {
 function renderSeats() {
   seats.forEach((seat) => {
     const player = state.players[seat];
-    const books = player.melds.map(bookType);
-    const clean = books.filter((type) => type === "clean" || type === "black3").length;
-    const dirty = books.filter((type) => type === "dirty").length;
     const el = seat === "south" ? els.seatSouth : els.seatNorth;
     el.classList.toggle("active-seat", state.currentTurn === seat && !state.wentOut);
     el.innerHTML = `
-      <div class="player-name">${seatNames[seat]}${seat === mySeat ? " (you)" : ""}</div>
-      <div class="player-meta">Hand ${player.hand.length} · Foot ${player.foot.length} · active ${player.active}</div>
-      <div class="player-meta">Open ${player.opened ? "yes" : openingTotal(player.melds) + "/" + rule().open}</div>
-      <div class="player-meta">Books ${clean}/${rule().books} clean · ${dirty}/${rule().books} dirty</div>
+      <div class="player-heading">
+        <div class="player-name">${seatNames[seat]}${seat === mySeat ? " (you)" : ""}</div>
+        <div class="player-card-count">Hand ${player.hand.length} · Foot ${player.foot.length}</div>
+      </div>
     `;
+    el.append(createPlayerMeldBoard(seat));
   });
+}
+
+function createPlayerMeldBoard(seat) {
+  const board = document.createElement("div");
+  board.className = "player-meld-grid";
+  const melds = state.players[seat].melds;
+  melds.forEach((meld, index) => {
+    board.append(createMeldElement(seat, meld, index));
+  });
+  return board;
 }
 
 function renderDiscardPreview() {
@@ -884,21 +892,25 @@ function renderDiscardPreview() {
 function renderMelds(seat, container) {
   container.innerHTML = "";
   state.players[seat].melds.forEach((meld, index) => {
-    const item = document.createElement("div");
-    item.className = "meld";
-    item.innerHTML = `
-      <div class="meld-title"><span>${rankName(meld.rank)}</span><span>${meld.cards.length}/7</span></div>
-      <div class="meld-cards">${meld.cards.map(meldCardMarkup).join("")}</div>
-    `;
-    if (seat === mySeat && isMyTurn() && state.turnStage === "play") {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = "Add selected";
-      button.addEventListener("click", () => meldSelected(index));
-      item.append(button);
-    }
-    container.append(item);
+    container.append(createMeldElement(seat, meld, index));
   });
+}
+
+function createMeldElement(seat, meld, index) {
+  const item = document.createElement("div");
+  item.className = "meld";
+  item.innerHTML = `
+    <div class="meld-title"><span>${rankName(meld.rank)}</span><span>${meld.cards.length}/7</span></div>
+    <div class="meld-cards">${meld.cards.map(meldCardMarkup).join("")}</div>
+  `;
+  if (seat === mySeat && isMyTurn() && state.turnStage === "play") {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Add selected";
+    button.addEventListener("click", () => meldSelected(index));
+    item.append(button);
+  }
+  return item;
 }
 
 function meldCardMarkup(card) {
