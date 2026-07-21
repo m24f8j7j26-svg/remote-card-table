@@ -66,6 +66,8 @@ let state = normalizeState(savedSession?.state);
 let lastObservedTurnSeat = state.currentTurn;
 let lastObservedWentOut = state.wentOut;
 let turnAudioContext = null;
+let turnAudioUnlocked = false;
+let pendingJackpotSound = false;
 let serverWriteInFlight = false;
 let queuedServerState = null;
 let serverRetryTimer = null;
@@ -1016,20 +1018,54 @@ function maybePlayTurnSound() {
   const becameMyTurn = lastObservedTurnSeat !== state.currentTurn && state.currentTurn === mySeat && !state.wentOut;
   lastObservedTurnSeat = state.currentTurn;
   lastObservedWentOut = state.wentOut;
-  if (roundJustEnded) playJackpotSound();
+  if (roundJustEnded && !playJackpotSound()) pendingJackpotSound = true;
   if (becameMyTurn) playTurnSound();
 }
 
 function armTurnSound() {
-  if (turnAudioContext) return;
-  const AudioContext = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContext) return;
-  turnAudioContext = new AudioContext();
+  if (!turnAudioContext) {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    turnAudioContext = new AudioContext();
+  }
   turnAudioContext.resume?.();
+  unlockTurnAudio();
+  if (pendingJackpotSound && canPlayAudio()) {
+    pendingJackpotSound = false;
+    playJackpotSound();
+  }
+}
+
+function unlockTurnAudio() {
+  if (!turnAudioContext || (turnAudioUnlocked && turnAudioContext.state === "running")) return;
+  const now = turnAudioContext.currentTime;
+  const gain = turnAudioContext.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
+  gain.connect(turnAudioContext.destination);
+  const oscillator = turnAudioContext.createOscillator();
+  oscillator.type = "sine";
+  oscillator.frequency.setValueAtTime(440, now);
+  oscillator.connect(gain);
+  oscillator.start(now);
+  oscillator.stop(now + 0.04);
+  turnAudioUnlocked = true;
+}
+
+function canPlayAudio() {
+  return Boolean(turnAudioContext && turnAudioUnlocked);
+}
+
+function createTurnAudioContext() {
+  if (turnAudioContext) return turnAudioContext;
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return null;
+  turnAudioContext = new AudioContext();
+  return turnAudioContext;
 }
 
 function playTurnSound() {
-  if (!turnAudioContext) return;
+  if (!createTurnAudioContext() || !canPlayAudio()) return false;
   turnAudioContext.resume?.();
   const now = turnAudioContext.currentTime;
   [
@@ -1038,23 +1074,25 @@ function playTurnSound() {
     { at: 0.28, frequency: 1046.5, peak: 0.24, duration: 0.46 },
     { at: 0.56, frequency: 523.25, peak: 0.28, duration: 0.72 },
   ].forEach(({ at, frequency, peak, duration }) => playBellTone(now + at, frequency, peak, duration));
+  return true;
 }
 
 function playJackpotSound() {
-  if (!turnAudioContext) return;
+  if (!createTurnAudioContext() || !canPlayAudio()) return false;
   turnAudioContext.resume?.();
   const now = turnAudioContext.currentTime;
   [
-    { at: 0, frequency: 523.25, peak: 0.19, duration: 0.15 },
-    { at: 0.12, frequency: 659.25, peak: 0.2, duration: 0.15 },
-    { at: 0.24, frequency: 783.99, peak: 0.22, duration: 0.16 },
-    { at: 0.36, frequency: 1046.5, peak: 0.24, duration: 0.18 },
-    { at: 0.58, frequency: 1318.51, peak: 0.2, duration: 0.12 },
-    { at: 0.7, frequency: 1567.98, peak: 0.18, duration: 0.12 },
+    { at: 0, frequency: 523.25, peak: 0.26, duration: 0.15 },
+    { at: 0.12, frequency: 659.25, peak: 0.27, duration: 0.15 },
+    { at: 0.24, frequency: 783.99, peak: 0.29, duration: 0.16 },
+    { at: 0.36, frequency: 1046.5, peak: 0.31, duration: 0.18 },
+    { at: 0.58, frequency: 1318.51, peak: 0.28, duration: 0.12 },
+    { at: 0.7, frequency: 1567.98, peak: 0.25, duration: 0.12 },
   ].forEach(({ at, frequency, peak, duration }) => playPrizeTone(now + at, frequency, peak, duration));
-  playBellTone(now + 0.88, 523.25, 0.28, 0.62);
-  playBellTone(now + 0.96, 659.25, 0.22, 0.56);
-  playBellTone(now + 1.04, 783.99, 0.2, 0.5);
+  playBellTone(now + 0.88, 523.25, 0.34, 0.62);
+  playBellTone(now + 0.96, 659.25, 0.28, 0.56);
+  playBellTone(now + 1.04, 783.99, 0.25, 0.5);
+  return true;
 }
 
 function playPrizeTone(start, frequency, peakGain, duration) {
@@ -1409,7 +1447,7 @@ els.roomInput.addEventListener("input", () => {
   els.roomInput.value = els.roomInput.value.toUpperCase();
   render();
 });
-["pointerdown", "keydown"].forEach((eventName) => window.addEventListener(eventName, armTurnSound, { once: true }));
+["pointerdown", "keydown"].forEach((eventName) => window.addEventListener(eventName, armTurnSound));
 
 if (savedSession?.room) els.roomInput.value = savedSession.room;
 render();
