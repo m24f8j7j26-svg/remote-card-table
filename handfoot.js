@@ -945,7 +945,10 @@ function createMeldElement(seat, meld, index) {
   const item = document.createElement("div");
   item.className = `meld ${isCompleteBook ? "complete-book" : ""} ${canPlayOnMeld ? "meld-add-target" : ""}`;
   item.innerHTML = `
-    <div class="meld-title"><span>${rankName(meld.rank)}</span></div>
+    <div class="meld-title">
+      <span class="meld-count">${scoredMeldCards(meld).length}</span>
+      <span class="meld-rank">${rankName(meld.rank)}</span>
+    </div>
     ${isCompleteBook ? completeMeldMarkup(meld) : `<div class="meld-cards">${displayMeldCards(meld).map(meldCardMarkup).join("")}</div>`}
   `;
   if (canPlayOnMeld) {

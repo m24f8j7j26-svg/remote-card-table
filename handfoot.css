@@ -175,9 +175,23 @@
 
 .meld-title {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.02rem;
   font-weight: 900;
+  line-height: 1;
+  text-align: center;
+}
+
+.meld-count {
+  color: var(--gold);
+  font-size: 0.68rem;
+}
+
+.meld-rank {
+  color: var(--ink);
+  font-size: 0.92rem;
 }
 
 .meld-add-target {
