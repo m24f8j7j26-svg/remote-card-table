@@ -67,7 +67,11 @@ let lastObservedTurnSeat = state.currentTurn;
 let lastObservedWentOut = state.wentOut;
 let turnAudioContext = null;
 let turnAudioUnlocked = false;
-let pendingJackpotSound = false;
+let pendingJackpotSoundKey = null;
+let activeWinnerSoundKey = null;
+let stoppedWinnerSoundKey = null;
+let winnerSoundLoopTimer = null;
+let winnerSoundGain = null;
 let serverWriteInFlight = false;
 let queuedServerState = null;
 let serverRetryTimer = null;
@@ -671,6 +675,7 @@ function formatAgo(ms) {
 }
 
 function clearRoomCode() {
+  stopWinnerSound(false);
   clearInterval(pollTimer);
   clearInterval(presenceTimer);
   pollTimer = null;
@@ -1009,31 +1014,45 @@ function isMyTurn() {
 }
 
 function maybePlayTurnSound() {
+  maybePlayWinnerSound();
   if (!mySeat) {
     lastObservedTurnSeat = state.currentTurn;
     lastObservedWentOut = state.wentOut;
     return;
   }
-  const roundJustEnded = !lastObservedWentOut && state.wentOut;
   const becameMyTurn = lastObservedTurnSeat !== state.currentTurn && state.currentTurn === mySeat && !state.wentOut;
   lastObservedTurnSeat = state.currentTurn;
   lastObservedWentOut = state.wentOut;
-  if (roundJustEnded && !playJackpotSound()) pendingJackpotSound = true;
   if (becameMyTurn) playTurnSound();
 }
 
-function armTurnSound() {
-  if (!turnAudioContext) {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    turnAudioContext = new AudioContext();
+function maybePlayWinnerSound() {
+  const key = jackpotSoundKey();
+  if (!key) {
+    stopWinnerSound(false);
+    pendingJackpotSoundKey = null;
+    return;
   }
-  turnAudioContext.resume?.();
+  if (key === stoppedWinnerSoundKey || key === pendingJackpotSoundKey || key === activeWinnerSoundKey) return;
+  if (!startWinnerSoundLoop(key)) pendingJackpotSoundKey = key;
+}
+
+function jackpotSoundKey() {
+  if (!state.wentOut) return null;
+  return `${state.round}:${state.wentOut}:${stateRevision()}`;
+}
+
+async function armTurnSound() {
+  const context = createTurnAudioContext();
+  if (!context) return false;
+  try {
+    await context.resume?.();
+  } catch (error) {
+    // Browsers may reject until a trusted user interaction; the next click/key retries.
+  }
   unlockTurnAudio();
-  if (pendingJackpotSound && canPlayAudio()) {
-    pendingJackpotSound = false;
-    playJackpotSound();
-  }
+  if (startPendingWinnerSound()) render();
+  return canPlayAudio();
 }
 
 function unlockTurnAudio() {
@@ -1049,11 +1068,11 @@ function unlockTurnAudio() {
   oscillator.connect(gain);
   oscillator.start(now);
   oscillator.stop(now + 0.04);
-  turnAudioUnlocked = true;
+  turnAudioUnlocked = turnAudioContext.state === "running";
 }
 
 function canPlayAudio() {
-  return Boolean(turnAudioContext && turnAudioUnlocked);
+  return Boolean(turnAudioContext && turnAudioUnlocked && turnAudioContext.state === "running");
 }
 
 function createTurnAudioContext() {
@@ -1061,7 +1080,14 @@ function createTurnAudioContext() {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   if (!AudioContext) return null;
   turnAudioContext = new AudioContext();
+  turnAudioContext.addEventListener?.("statechange", handleTurnAudioStateChange);
   return turnAudioContext;
+}
+
+function handleTurnAudioStateChange() {
+  if (turnAudioContext?.state !== "running") return;
+  turnAudioUnlocked = true;
+  if (startPendingWinnerSound()) render();
 }
 
 function playTurnSound() {
@@ -1081,6 +1107,8 @@ function playJackpotSound() {
   if (!createTurnAudioContext() || !canPlayAudio()) return false;
   turnAudioContext.resume?.();
   const now = turnAudioContext.currentTime;
+  const output = createWinnerSoundOutput();
+  if (!output) return false;
   [
     { at: 0, frequency: 523.25, peak: 0.26, duration: 0.15 },
     { at: 0.12, frequency: 659.25, peak: 0.27, duration: 0.15 },
@@ -1088,19 +1116,98 @@ function playJackpotSound() {
     { at: 0.36, frequency: 1046.5, peak: 0.31, duration: 0.18 },
     { at: 0.58, frequency: 1318.51, peak: 0.28, duration: 0.12 },
     { at: 0.7, frequency: 1567.98, peak: 0.25, duration: 0.12 },
-  ].forEach(({ at, frequency, peak, duration }) => playPrizeTone(now + at, frequency, peak, duration));
-  playBellTone(now + 0.88, 523.25, 0.34, 0.62);
-  playBellTone(now + 0.96, 659.25, 0.28, 0.56);
-  playBellTone(now + 1.04, 783.99, 0.25, 0.5);
+  ].forEach(({ at, frequency, peak, duration }) => playPrizeTone(now + at, frequency, peak, duration, output));
+  playBellTone(now + 0.88, 523.25, 0.34, 0.62, output);
+  playBellTone(now + 0.96, 659.25, 0.28, 0.56, output);
+  playBellTone(now + 1.04, 783.99, 0.25, 0.5, output);
   return true;
 }
 
-function playPrizeTone(start, frequency, peakGain, duration) {
+function createWinnerSoundOutput() {
+  if (!turnAudioContext) return null;
+  if (!winnerSoundGain) {
+    winnerSoundGain = turnAudioContext.createGain();
+    winnerSoundGain.gain.setValueAtTime(1, turnAudioContext.currentTime);
+    winnerSoundGain.connect(turnAudioContext.destination);
+  }
+  return winnerSoundGain;
+}
+
+function startWinnerSoundLoop(key = jackpotSoundKey()) {
+  if (!key) return false;
+  if (activeWinnerSoundKey === key && winnerSoundLoopTimer) return true;
+  if (!playJackpotSound()) {
+    pendingJackpotSoundKey = key;
+    return false;
+  }
+  if (pendingJackpotSoundKey === key) pendingJackpotSoundKey = null;
+  stoppedWinnerSoundKey = null;
+  if (activeWinnerSoundKey !== key) {
+    clearInterval(winnerSoundLoopTimer);
+    winnerSoundLoopTimer = null;
+  }
+  activeWinnerSoundKey = key;
+  if (!winnerSoundLoopTimer) {
+    winnerSoundLoopTimer = setInterval(() => {
+      if (jackpotSoundKey() !== key || key === stoppedWinnerSoundKey) {
+        stopWinnerSound(false);
+        return;
+      }
+      playJackpotSound();
+    }, 2600);
+  }
+  return true;
+}
+
+function startPendingWinnerSound() {
+  return pendingJackpotSoundKey ? startWinnerSoundLoop(pendingJackpotSoundKey) : false;
+}
+
+async function playWinnerSoundNow() {
+  const key = jackpotSoundKey();
+  if (!key) return;
+  stoppedWinnerSoundKey = null;
+  pendingJackpotSoundKey = key;
+  await armTurnSound();
+  if (startPendingWinnerSound()) {
+    render();
+    return;
+  }
+  state.message = "Sound is still blocked. Click Play winner sound again, or check browser and device volume.";
+  render();
+}
+
+function stopWinnerSound(rememberStop = true) {
+  const key = activeWinnerSoundKey || pendingJackpotSoundKey || jackpotSoundKey();
+  if (rememberStop && key) stoppedWinnerSoundKey = key;
+  clearInterval(winnerSoundLoopTimer);
+  winnerSoundLoopTimer = null;
+  activeWinnerSoundKey = null;
+  pendingJackpotSoundKey = null;
+  if (winnerSoundGain && turnAudioContext) {
+    const now = turnAudioContext.currentTime;
+    winnerSoundGain.gain.cancelScheduledValues(now);
+    winnerSoundGain.gain.setValueAtTime(0.0001, now);
+    winnerSoundGain.disconnect();
+    winnerSoundGain = null;
+  }
+}
+
+function stopWinnerSoundNow() {
+  stopWinnerSound();
+  render();
+}
+
+function winnerSoundIsPlaying() {
+  return Boolean(winnerSoundLoopTimer && activeWinnerSoundKey === jackpotSoundKey());
+}
+
+function playPrizeTone(start, frequency, peakGain, duration, output = turnAudioContext.destination) {
   const toneGain = turnAudioContext.createGain();
   toneGain.gain.setValueAtTime(0.0001, start);
   toneGain.gain.exponentialRampToValueAtTime(peakGain, start + 0.012);
   toneGain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-  toneGain.connect(turnAudioContext.destination);
+  toneGain.connect(output);
   const oscillator = turnAudioContext.createOscillator();
   oscillator.type = "triangle";
   oscillator.frequency.setValueAtTime(frequency, start);
@@ -1109,12 +1216,12 @@ function playPrizeTone(start, frequency, peakGain, duration) {
   oscillator.stop(start + duration + 0.02);
 }
 
-function playBellTone(start, frequency, peakGain, duration = 0.72) {
+function playBellTone(start, frequency, peakGain, duration = 0.72, output = turnAudioContext.destination) {
   const toneGain = turnAudioContext.createGain();
   toneGain.gain.setValueAtTime(0.0001, start);
   toneGain.gain.exponentialRampToValueAtTime(peakGain, start + 0.025);
   toneGain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-  toneGain.connect(turnAudioContext.destination);
+  toneGain.connect(output);
   [
     { frequency, level: 1 },
     { frequency: frequency * 1.5, level: 0.34 },
@@ -1343,7 +1450,7 @@ function renderActions() {
     return;
   }
   if (state.wentOut) {
-    addAction("Round complete", () => {}, true);
+    addAction(winnerSoundIsPlaying() ? "Stop winner sound" : "Play winner sound", winnerSoundIsPlaying() ? stopWinnerSoundNow : playWinnerSoundNow);
     return;
   }
   if (!isMyTurn()) {
@@ -1408,8 +1515,12 @@ function cardMarkup(card) {
 }
 
 function confirmNewRound() {
+  stopWinnerSound();
   const ok = window.confirm("Start a new round? This will end the current round for both players.");
-  if (!ok) return;
+  if (!ok) {
+    render();
+    return;
+  }
   state = createGame(state);
   selected.clear();
   drawnCardIds.clear();
@@ -1417,8 +1528,12 @@ function confirmNewRound() {
 }
 
 function confirmNewGame() {
+  stopWinnerSound();
   const ok = window.confirm("Start a new game? This will reset scores and the current round for both players.");
-  if (!ok) return;
+  if (!ok) {
+    render();
+    return;
+  }
   const previousRevision = stateRevision();
   state = createGame();
   state.revision = previousRevision;
