@@ -88,7 +88,7 @@ function normalizeState(game) {
   if (!game.game) game.game = "handfoot";
   if (!Number.isFinite(game.revision)) game.revision = 0;
   if (!seats.includes(game.roundStarter)) game.roundStarter = "south";
-  upgradeOpeningRoundDeckCount(game);
+  upgradeGameDeckCount(game);
   if (typeof game.firstUpCardOpen !== "boolean") game.firstUpCardOpen = looksLikeOpeningUpCard(game);
   return game;
 }
@@ -125,14 +125,77 @@ function hasOpeningPlayerShape(game) {
   });
 }
 
-function upgradeOpeningRoundDeckCount(game) {
-  const currentDeckCount = inferOpeningDeckCount(game);
-  if (!currentDeckCount || currentDeckCount >= deckCount) {
+function upgradeGameDeckCount(game) {
+  const currentDeckCount = inferDeckCountFromCards(game);
+  if (!currentDeckCount || currentDeckCount >= deckCount || game.wentOut) {
     if (currentDeckCount && !Number.isFinite(game.deckCount)) game.deckCount = currentDeckCount;
     return;
   }
-  game.stock = shuffle([...game.stock, ...createDeck(deckCount - currentDeckCount, currentDeckCount)]);
+  const addedCards = deterministicShuffle(
+    createDeck(deckCount - currentDeckCount, currentDeckCount),
+    deckUpgradeSeed(game, currentDeckCount)
+  );
+  game.stock = [...(game.stock || []), ...addedCards];
   game.deckCount = deckCount;
+}
+
+function inferDeckCountFromCards(game) {
+  const cardDecks = allGameCards(game)
+    .map((card) => deckIndexFromCardId(card?.id))
+    .filter((index) => Number.isFinite(index));
+  const inferredDeckCount = cardDecks.length ? Math.max(...cardDecks) + 1 : 0;
+  const storedDeckCount = Number.isFinite(game?.deckCount) ? game.deckCount : 0;
+  return Math.max(inferredDeckCount, storedDeckCount);
+}
+
+function deckIndexFromCardId(id) {
+  const match = typeof id === "string" ? id.match(/-(\d+)$/) : null;
+  return match ? Number(match[1]) : null;
+}
+
+function allGameCards(game) {
+  const cards = [...(game?.stock || []), ...(game?.discard || [])];
+  seats.forEach((seat) => {
+    const player = game?.players?.[seat];
+    if (!player) return;
+    cards.push(...(player.hand || []), ...(player.foot || []));
+    (player.melds || []).forEach((meld) => cards.push(...(meld.cards || []), ...(meld.killed || [])));
+  });
+  return cards;
+}
+
+function deckUpgradeSeed(game, currentDeckCount) {
+  return [
+    "handfoot-deck-upgrade",
+    currentDeckCount,
+    deckCount,
+    game.round,
+    game.roundStarter,
+    allGameCards(game)
+      .map((card) => card.id)
+      .sort()
+      .join(","),
+  ].join("|");
+}
+
+function deterministicShuffle(deck, seedText) {
+  const cards = [...deck];
+  let seed = hashString(seedText);
+  for (let i = cards.length - 1; i > 0; i -= 1) {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    const j = seed % (i + 1);
+    [cards[i], cards[j]] = [cards[j], cards[i]];
+  }
+  return cards;
+}
+
+function hashString(text) {
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
 }
 
 function openingStockSizeFor(count) {
