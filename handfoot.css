@@ -169,6 +169,8 @@
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 0.5rem;
   background: rgba(255, 255, 255, 0.06);
+  display: grid;
+  justify-items: center;
   min-width: 0;
   padding: 0.42rem;
 }
@@ -179,6 +181,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.02rem;
+  width: 2.85rem;
   font-weight: 900;
   line-height: 1;
   text-align: center;
@@ -213,14 +216,16 @@
 }
 
 .meld-cards {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0;
+  width: 2.85rem;
   margin-top: 0.42rem;
   overflow: visible;
   padding-bottom: 0.08rem;
-  padding-left: 0.08rem;
+  padding-left: 0.36rem;
 }
 
 .meld-card {
@@ -505,6 +510,24 @@
   color: var(--muted);
   font-size: 0.7rem;
   font-weight: 850;
+}
+
+.player-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.player-meld-total {
+  color: var(--muted);
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.player-meld-total.open {
+  color: var(--gold);
 }
 
 .player-meld-grid {

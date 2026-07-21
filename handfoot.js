@@ -57,6 +57,8 @@ let selected = new Set();
 let drawnCardIds = new Set();
 const savedSession = loadLocalSession();
 let state = normalizeState(savedSession?.state);
+let lastObservedTurnSeat = state.currentTurn;
+let turnAudioContext = null;
 let serverWriteInFlight = false;
 let queuedServerState = null;
 let serverRetryTimer = null;
@@ -865,7 +867,45 @@ function isMyTurn() {
   return mySeat && state.currentTurn === mySeat && !state.wentOut;
 }
 
+function maybePlayTurnSound() {
+  if (!mySeat) {
+    lastObservedTurnSeat = state.currentTurn;
+    return;
+  }
+  const becameMyTurn = lastObservedTurnSeat !== state.currentTurn && state.currentTurn === mySeat && !state.wentOut;
+  lastObservedTurnSeat = state.currentTurn;
+  if (becameMyTurn) playTurnSound();
+}
+
+function armTurnSound() {
+  if (turnAudioContext) return;
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return;
+  turnAudioContext = new AudioContext();
+  turnAudioContext.resume?.();
+}
+
+function playTurnSound() {
+  if (!turnAudioContext) return;
+  turnAudioContext.resume?.();
+  const now = turnAudioContext.currentTime;
+  const gain = turnAudioContext.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.12, now + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+  gain.connect(turnAudioContext.destination);
+  [660, 880].forEach((frequency, index) => {
+    const oscillator = turnAudioContext.createOscillator();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(frequency, now + index * 0.12);
+    oscillator.connect(gain);
+    oscillator.start(now + index * 0.12);
+    oscillator.stop(now + index * 0.12 + 0.22);
+  });
+}
+
 function render() {
+  maybePlayTurnSound();
   els.hostBtn.disabled = Boolean(role);
   els.joinBtn.disabled = Boolean(role);
   els.copyBtn.disabled = !els.roomInput.value.trim();
@@ -894,6 +934,8 @@ function render() {
 function renderSeats() {
   seats.forEach((seat) => {
     const player = state.players[seat];
+    const meldTotal = openingTotal(player.melds);
+    const opened = player.opened || meldTotal >= rule().open;
     const el = seat === "south" ? els.seatSouth : els.seatNorth;
     el.classList.toggle("active-seat", state.currentTurn === seat && !state.wentOut);
     el.innerHTML = `
@@ -901,7 +943,10 @@ function renderSeats() {
         <div class="player-name">${seatNames[seat]}${seat === mySeat ? " (you)" : ""}</div>
         <div class="player-score"><span>Score</span><strong>${state.scores[seat]}</strong></div>
       </div>
-      <div class="player-card-count">Hand ${player.hand.length} · Foot ${player.foot.length}</div>
+      <div class="player-info-row">
+        <span class="player-card-count">Hand ${player.hand.length} · Foot ${player.foot.length}</span>
+        <span class="player-meld-total ${opened ? "open" : ""}">Meld ${meldTotal}/${rule().open}</span>
+      </div>
     `;
     el.append(createPlayerMeldBoard(seat));
   });
@@ -1125,6 +1170,7 @@ els.roomInput.addEventListener("input", () => {
   els.roomInput.value = els.roomInput.value.toUpperCase();
   render();
 });
+["pointerdown", "keydown"].forEach((eventName) => window.addEventListener(eventName, armTurnSound, { once: true }));
 
 if (savedSession?.room) els.roomInput.value = savedSession.room;
 render();
