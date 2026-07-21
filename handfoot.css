@@ -248,6 +248,88 @@
   line-height: 1;
 }
 
+.complete-book {
+  align-self: start;
+}
+
+.complete-book .meld-title {
+  font-size: 0.82rem;
+}
+
+.complete-book-pile {
+  position: relative;
+  width: 2.85rem;
+  height: 3.36rem;
+  margin-top: 0.34rem;
+}
+
+.complete-book-pile.dirty .book-card-top {
+  box-shadow: 0 0 0 2px rgba(240, 196, 107, 0.58);
+}
+
+.complete-book-pile.black3 .book-card-top {
+  box-shadow: 0 0 0 2px rgba(220, 226, 231, 0.45);
+}
+
+.book-card {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.12rem;
+  min-height: 2.92rem;
+  border: 1px solid rgba(25, 25, 25, 0.22);
+  border-radius: 0.36rem;
+  background:
+    linear-gradient(145deg, #ffffff 0%, #fffaf0 72%, #f1eadc 100%);
+  color: var(--card-ink);
+  font-weight: 950;
+}
+
+.book-card-back,
+.book-card-middle {
+  background:
+    repeating-linear-gradient(45deg, #203f78 0 0.34rem, #2f5fa4 0.34rem 0.68rem);
+}
+
+.book-card-back {
+  left: 0;
+  top: 0.18rem;
+}
+
+.book-card-middle {
+  left: 0.22rem;
+  top: 0.08rem;
+}
+
+.book-card-top {
+  left: 0.44rem;
+  top: 0;
+}
+
+.book-card.red {
+  color: var(--red);
+}
+
+.book-card.suit-c {
+  color: #145f45;
+}
+
+.book-card .rank {
+  position: absolute;
+  left: 0.2rem;
+  top: 0.16rem;
+  z-index: 1;
+  font-size: 0.76rem;
+  line-height: 1;
+}
+
+.book-card .suit {
+  color: currentColor;
+  font-size: 0.86rem;
+  line-height: 1;
+}
+
 .hf-hand {
   grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
 }

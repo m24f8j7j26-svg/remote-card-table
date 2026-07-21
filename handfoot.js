@@ -904,12 +904,12 @@ function sortedMelds(seat) {
 
 function createMeldElement(seat, meld, index) {
   const item = document.createElement("div");
-  item.className = "meld";
+  item.className = `meld ${meld.cards.length >= 7 ? "complete-book" : ""}`;
   item.innerHTML = `
     <div class="meld-title"><span>${rankName(meld.rank)}</span><span>${meld.cards.length}/7</span></div>
-    <div class="meld-cards">${sortCards(meld.cards).map(meldCardMarkup).join("")}</div>
+    ${meld.cards.length >= 7 ? completeMeldMarkup(meld) : `<div class="meld-cards">${displayMeldCards(meld).map(meldCardMarkup).join("")}</div>`}
   `;
-  if (seat === mySeat && isMyTurn() && state.turnStage === "play") {
+  if (seat === mySeat && isMyTurn() && state.turnStage === "play" && meld.cards.length < 7) {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = "Add selected";
@@ -917,6 +917,24 @@ function createMeldElement(seat, meld, index) {
     item.append(button);
   }
   return item;
+}
+
+function displayMeldCards(meld) {
+  return [...meld.cards].sort((a, b) => {
+    if (isWild(a) !== isWild(b)) return isWild(a) ? -1 : 1;
+    return rankOrder[a.rank] - rankOrder[b.rank] || a.suit.localeCompare(b.suit);
+  });
+}
+
+function completeMeldMarkup(meld) {
+  const topCard = displayMeldCards(meld)[0];
+  return `
+    <div class="complete-book-pile ${bookType(meld)}" title="${rankName(meld.rank)} complete book">
+      <span class="book-card book-card-back"></span>
+      <span class="book-card book-card-middle"></span>
+      <span class="book-card book-card-top ${cardSuitClass(topCard)}">${cardMarkup(topCard)}</span>
+    </div>
+  `;
 }
 
 function meldCardMarkup(card) {
