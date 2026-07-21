@@ -11,7 +11,9 @@ const roundRules = [
 ];
 const startingHandSize = 11;
 const startingFootSize = 11;
-const openingStockSize = 4 * (13 * 4 + 2) - seats.length * (startingHandSize + startingFootSize) - 1;
+const cardsPerDeck = 13 * 4 + 2;
+const deckCount = 6;
+const previousDeckCounts = [4];
 const localSessionKey = "remote-card-table-handfoot-session-v1";
 const remoteRelayOrigin = "https://cards.boyzofsummerpics.com";
 const apiBaseUrl =
@@ -86,6 +88,7 @@ function normalizeState(game) {
   if (!game.game) game.game = "handfoot";
   if (!Number.isFinite(game.revision)) game.revision = 0;
   if (!seats.includes(game.roundStarter)) game.roundStarter = "south";
+  upgradeOpeningRoundDeckCount(game);
   if (typeof game.firstUpCardOpen !== "boolean") game.firstUpCardOpen = looksLikeOpeningUpCard(game);
   return game;
 }
@@ -99,8 +102,17 @@ function isFirstUpCardAvailable(game = state) {
 }
 
 function looksLikeOpeningUpCard(game) {
-  if (!game?.players || !game?.discard?.[0]) return false;
-  if (game.discard.length !== 1 || game.stock?.length !== openingStockSize) return false;
+  if (!inferOpeningDeckCount(game)) return false;
+  return hasOpeningPlayerShape(game);
+}
+
+function inferOpeningDeckCount(game) {
+  if (!game?.players || !game?.discard?.[0] || game.discard.length !== 1) return null;
+  const counts = [deckCount, ...previousDeckCounts];
+  return counts.find((count) => game.stock?.length === openingStockSizeFor(count) && hasOpeningPlayerShape(game)) || null;
+}
+
+function hasOpeningPlayerShape(game) {
   return seats.every((seat) => {
     const player = game.players[seat];
     return (
@@ -111,6 +123,20 @@ function looksLikeOpeningUpCard(game) {
       !player.opened
     );
   });
+}
+
+function upgradeOpeningRoundDeckCount(game) {
+  const currentDeckCount = inferOpeningDeckCount(game);
+  if (!currentDeckCount || currentDeckCount >= deckCount) {
+    if (currentDeckCount && !Number.isFinite(game.deckCount)) game.deckCount = currentDeckCount;
+    return;
+  }
+  game.stock = shuffle([...game.stock, ...createDeck(deckCount - currentDeckCount, currentDeckCount)]);
+  game.deckCount = deckCount;
+}
+
+function openingStockSizeFor(count) {
+  return count * cardsPerDeck - seats.length * (startingHandSize + startingFootSize) - 1;
 }
 
 function bumpStateRevision() {
@@ -156,11 +182,11 @@ function cardIdSignature(cards) {
   return Array.isArray(cards) ? cards.map((card) => card.id).join(",") : "";
 }
 
-function createDeck() {
+function createDeck(count = deckCount, startIndex = 0) {
   const ranks = ["A", "K", "Q", "J", "T", "9", "8", "7", "6", "5", "4", "3", "2"];
   const suits = ["S", "H", "D", "C"];
   const deck = [];
-  for (let d = 0; d < 4; d += 1) {
+  for (let d = startIndex; d < startIndex + count; d += 1) {
     suits.forEach((suit) => ranks.forEach((rank) => deck.push({ id: `${rank}${suit}-${d}`, rank, suit })));
     deck.push({ id: `XJ-a-${d}`, rank: "X", suit: "J" }, { id: `XJ-b-${d}`, rank: "X", suit: "J" });
   }
@@ -192,6 +218,7 @@ function createGame(previous = null) {
     stock: deck,
     discard: [deck.shift()],
     players,
+    deckCount,
     roundStarter: starter,
     currentTurn: starter,
     turnStage: "firstDiscard",
