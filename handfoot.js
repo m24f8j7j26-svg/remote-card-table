@@ -1111,11 +1111,11 @@ function playJackpotSound() {
   const output = createWinnerSoundOutput();
   if (!output) return false;
   [
-    { at: 0, lift: 440, pop: 132, color: 1720 },
-    { at: 0.72, lift: 554.37, pop: 154, color: 2180 },
-    { at: 1.42, lift: 659.25, pop: 118, color: 2650 },
-  ].forEach(({ at, lift, pop, color }) => playFirework(now + at, lift, pop, color, output));
-  playFireworkFinale(now + 2.22, output);
+    { at: 0, lift: 430, pop: 82, color: 1820, pan: -0.42 },
+    { at: 0.78, lift: 610, pop: 108, color: 2440, pan: 0.38 },
+    { at: 1.52, lift: 520, pop: 74, color: 3140, pan: -0.08 },
+  ].forEach(({ at, lift, pop, color, pan }) => playFirework(now + at, lift, pop, color, pan, output));
+  playFireworkFinale(now + 2.36, output);
   return true;
 }
 
@@ -1123,7 +1123,7 @@ function createWinnerSoundOutput() {
   if (!turnAudioContext) return null;
   if (!winnerSoundGain) {
     winnerSoundGain = turnAudioContext.createGain();
-    winnerSoundGain.gain.setValueAtTime(1, turnAudioContext.currentTime);
+    winnerSoundGain.gain.setValueAtTime(1.25, turnAudioContext.currentTime);
     winnerSoundGain.connect(turnAudioContext.destination);
   }
   return winnerSoundGain;
@@ -1150,7 +1150,7 @@ function startWinnerSoundLoop(key = jackpotSoundKey()) {
         return;
       }
       playJackpotSound();
-    }, 3600);
+    }, 4400);
   }
   return true;
 }
@@ -1198,100 +1198,150 @@ function winnerSoundIsPlaying() {
   return Boolean(winnerSoundLoopTimer && activeWinnerSoundKey === jackpotSoundKey());
 }
 
-function playFirework(start, liftFrequency, popFrequency, sparkleFrequency, output = turnAudioContext.destination) {
-  playFireworkLift(start, liftFrequency, output);
-  playFireworkPop(start + 0.42, popFrequency, output);
-  playFireworkCrackle(start + 0.5, sparkleFrequency, output);
-  playFireworkSizzle(start + 0.54, sparkleFrequency * 0.72, output);
+function playFirework(start, liftFrequency, popFrequency, sparkleFrequency, pan = 0, output = turnAudioContext.destination) {
+  playFireworkLaunch(start, liftFrequency, pan, output);
+  playFireworkExplosion(start + 0.56, popFrequency, sparkleFrequency, pan, output);
+  playFireworkCrackle(start + 0.62, sparkleFrequency, pan, output);
+  playFireworkSizzle(start + 0.82, sparkleFrequency * 0.64, pan, output);
 }
 
 function playFireworkFinale(start, output = turnAudioContext.destination) {
   [
-    { at: 0, lift: 493.88, pop: 145, color: 1900 },
-    { at: 0.2, lift: 622.25, pop: 168, color: 2500 },
-    { at: 0.4, lift: 739.99, pop: 128, color: 3050 },
-  ].forEach(({ at, lift, pop, color }) => playFirework(start + at, lift, pop, color, output));
+    { at: 0, lift: 490, pop: 96, color: 1940, pan: -0.58 },
+    { at: 0.18, lift: 660, pop: 126, color: 2680, pan: 0.56 },
+    { at: 0.4, lift: 750, pop: 88, color: 3400, pan: -0.16 },
+    { at: 0.66, lift: 580, pop: 116, color: 2220, pan: 0.18 },
+  ].forEach(({ at, lift, pop, color, pan }) => playFirework(start + at, lift, pop, color, pan, output));
 }
 
-function playFireworkLift(start, frequency, output = turnAudioContext.destination) {
-  const gain = turnAudioContext.createGain();
-  gain.gain.setValueAtTime(0.0001, start);
-  gain.gain.exponentialRampToValueAtTime(0.12, start + 0.04);
-  gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.38);
-  gain.connect(output);
+function playFireworkLaunch(start, frequency, pan = 0, output = turnAudioContext.destination) {
+  const whistleGain = turnAudioContext.createGain();
+  whistleGain.gain.setValueAtTime(0.0001, start);
+  whistleGain.gain.exponentialRampToValueAtTime(0.16, start + 0.06);
+  whistleGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.54);
+  connectSoundOutput(whistleGain, output, pan, start);
   const oscillator = turnAudioContext.createOscillator();
   oscillator.type = "sine";
   oscillator.frequency.setValueAtTime(frequency, start);
-  oscillator.frequency.exponentialRampToValueAtTime(frequency * 2.55, start + 0.34);
-  oscillator.connect(gain);
+  oscillator.frequency.exponentialRampToValueAtTime(frequency * 2.85, start + 0.5);
+  oscillator.connect(whistleGain);
   oscillator.start(start);
-  oscillator.stop(start + 0.4);
+  oscillator.stop(start + 0.58);
+
+  const rushGain = turnAudioContext.createGain();
+  rushGain.gain.setValueAtTime(0.0001, start);
+  rushGain.gain.exponentialRampToValueAtTime(0.1, start + 0.08);
+  rushGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.48);
+  const rushFilter = turnAudioContext.createBiquadFilter();
+  rushFilter.type = "highpass";
+  rushFilter.frequency.setValueAtTime(520, start);
+  rushFilter.frequency.exponentialRampToValueAtTime(2400, start + 0.46);
+  rushGain.connect(rushFilter);
+  connectSoundOutput(rushFilter, output, pan, start);
+  const rush = createNoiseSource();
+  rush.connect(rushGain);
+  rush.start(start);
+  rush.stop(start + 0.5);
 }
 
-function playFireworkPop(start, frequency, output = turnAudioContext.destination) {
+function playFireworkExplosion(start, frequency, sparkleFrequency, pan = 0, output = turnAudioContext.destination) {
   const boomGain = turnAudioContext.createGain();
   boomGain.gain.setValueAtTime(0.0001, start);
-  boomGain.gain.exponentialRampToValueAtTime(0.42, start + 0.012);
-  boomGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.5);
-  boomGain.connect(output);
+  boomGain.gain.exponentialRampToValueAtTime(0.62, start + 0.012);
+  boomGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.7);
+  connectSoundOutput(boomGain, output, pan, start);
   const boom = turnAudioContext.createOscillator();
-  boom.type = "triangle";
+  boom.type = "sine";
   boom.frequency.setValueAtTime(frequency, start);
-  boom.frequency.exponentialRampToValueAtTime(frequency * 0.46, start + 0.42);
+  boom.frequency.exponentialRampToValueAtTime(frequency * 0.32, start + 0.58);
   boom.connect(boomGain);
   boom.start(start);
-  boom.stop(start + 0.54);
+  boom.stop(start + 0.74);
 
   const burstGain = turnAudioContext.createGain();
   burstGain.gain.setValueAtTime(0.0001, start);
-  burstGain.gain.exponentialRampToValueAtTime(0.36, start + 0.008);
-  burstGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.22);
+  burstGain.gain.exponentialRampToValueAtTime(0.56, start + 0.006);
+  burstGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.3);
   const filter = turnAudioContext.createBiquadFilter();
   filter.type = "lowpass";
-  filter.frequency.setValueAtTime(900, start);
-  filter.frequency.exponentialRampToValueAtTime(160, start + 0.2);
-  filter.connect(output);
+  filter.frequency.setValueAtTime(1200, start);
+  filter.frequency.exponentialRampToValueAtTime(120, start + 0.28);
+  connectSoundOutput(filter, output, pan, start);
   burstGain.connect(filter);
   const noise = createNoiseSource();
   noise.connect(burstGain);
   noise.start(start);
-  noise.stop(start + 0.24);
+  noise.stop(start + 0.32);
+
+  playFireworkBrightPop(start + 0.035, sparkleFrequency, pan, output);
 }
 
-function playFireworkCrackle(start, frequency, output = turnAudioContext.destination) {
-  for (let i = 0; i < 11; i += 1) {
-    const at = start + i * 0.045 + ((i * 17) % 9) * 0.003;
+function playFireworkBrightPop(start, frequency, pan = 0, output = turnAudioContext.destination) {
+  const gain = turnAudioContext.createGain();
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(0.11, start + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.16);
+  connectSoundOutput(gain, output, pan, start);
+  const oscillator = turnAudioContext.createOscillator();
+  oscillator.type = "square";
+  oscillator.frequency.setValueAtTime(frequency, start);
+  oscillator.frequency.exponentialRampToValueAtTime(frequency * 1.22, start + 0.08);
+  oscillator.connect(gain);
+  oscillator.start(start);
+  oscillator.stop(start + 0.18);
+}
+
+function playFireworkCrackle(start, frequency, pan = 0, output = turnAudioContext.destination) {
+  for (let i = 0; i < 18; i += 1) {
+    const at = start + i * 0.04 + ((i * 17) % 11) * 0.003;
+    const spreadPan = clampPan(pan + (((i * 31) % 9) - 4) * 0.11);
     const gain = turnAudioContext.createGain();
     gain.gain.setValueAtTime(0.0001, at);
-    gain.gain.exponentialRampToValueAtTime(0.08 + (i % 3) * 0.02, at + 0.006);
-    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.09);
+    gain.gain.exponentialRampToValueAtTime(0.11 + (i % 4) * 0.026, at + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.11);
     const filter = turnAudioContext.createBiquadFilter();
     filter.type = "bandpass";
-    filter.frequency.setValueAtTime(frequency + i * 130, at);
-    filter.Q.setValueAtTime(9, at);
-    filter.connect(output);
+    filter.frequency.setValueAtTime(frequency + ((i * 211) % 1700), at);
+    filter.Q.setValueAtTime(12, at);
+    connectSoundOutput(filter, output, spreadPan, at);
     gain.connect(filter);
     const noise = createNoiseSource();
     noise.connect(gain);
     noise.start(at);
-    noise.stop(at + 0.11);
+    noise.stop(at + 0.13);
   }
 }
 
-function playFireworkSizzle(start, frequency, output = turnAudioContext.destination) {
+function playFireworkSizzle(start, frequency, pan = 0, output = turnAudioContext.destination) {
   const gain = turnAudioContext.createGain();
   gain.gain.setValueAtTime(0.0001, start);
-  gain.gain.exponentialRampToValueAtTime(0.11, start + 0.035);
-  gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.62);
+  gain.gain.exponentialRampToValueAtTime(0.14, start + 0.035);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.88);
   const filter = turnAudioContext.createBiquadFilter();
   filter.type = "highpass";
   filter.frequency.setValueAtTime(frequency, start);
-  filter.connect(output);
+  filter.Q.setValueAtTime(0.8, start);
+  connectSoundOutput(filter, output, pan, start);
   gain.connect(filter);
   const noise = createNoiseSource();
   noise.connect(gain);
   noise.start(start);
-  noise.stop(start + 0.64);
+  noise.stop(start + 0.9);
+}
+
+function connectSoundOutput(node, output, pan = 0, start = turnAudioContext.currentTime) {
+  if (!turnAudioContext.createStereoPanner) {
+    node.connect(output);
+    return;
+  }
+  const panner = turnAudioContext.createStereoPanner();
+  panner.pan.setValueAtTime(clampPan(pan), start);
+  node.connect(panner);
+  panner.connect(output);
+}
+
+function clampPan(pan) {
+  return Math.max(-1, Math.min(1, pan));
 }
 
 function createNoiseSource() {
@@ -1501,15 +1551,41 @@ function renderSeats() {
 }
 
 function fireworkMarkup() {
+  const bursts = [
+    { x: "17%", y: "28%", color: "#ffd36d", delay: "0s", radius: 2.85 },
+    { x: "76%", y: "21%", color: "#8ed1ff", delay: "0.32s", radius: 2.65 },
+    { x: "50%", y: "49%", color: "#ff9b8d", delay: "0.66s", radius: 3.05 },
+    { x: "82%", y: "71%", color: "#a8ffbf", delay: "1.02s", radius: 2.75 },
+    { x: "28%", y: "73%", color: "#fff6d6", delay: "1.28s", radius: 2.35 },
+  ];
   return `
     <div class="winner-fireworks" aria-hidden="true">
-      <span style="--x: 18%; --y: 24%; --c: #ffd86b; --d: 0s;"></span>
-      <span style="--x: 78%; --y: 18%; --c: #8ed1ff; --d: 0.18s;"></span>
-      <span style="--x: 52%; --y: 44%; --c: #ff9b8d; --d: 0.34s;"></span>
-      <span style="--x: 28%; --y: 72%; --c: #a8ffbf; --d: 0.54s;"></span>
-      <span style="--x: 86%; --y: 68%; --c: #fff6d6; --d: 0.72s;"></span>
+      ${bursts.map(fireworkCometMarkup).join("")}
+      ${bursts.map(fireworkBurstMarkup).join("")}
     </div>
   `;
+}
+
+function fireworkCometMarkup({ x, color, delay }, index) {
+  const drift = index % 2 ? "-2.4rem" : "2rem";
+  return `<i class="firework-comet" style="--x: ${x}; --c: ${color}; --d: ${delay}; --dx: ${drift};"></i>`;
+}
+
+function fireworkBurstMarkup({ x, y, color, delay, radius }) {
+  const angles = [0, 23, 45, 68, 90, 113, 135, 158, 180, 203, 225, 248, 270, 293, 315, 338];
+  return `
+    <span class="firework-burst" style="--x: ${x}; --y: ${y}; --c: ${color}; --d: ${delay};">
+      <i class="firework-core"></i>
+      ${angles.map((angle, index) => fireworkSparkMarkup(angle, index, radius)).join("")}
+    </span>
+  `;
+}
+
+function fireworkSparkMarkup(angle, index, radius) {
+  const distance = (radius + (index % 4) * 0.18).toFixed(2);
+  const delay = ((index % 5) * 0.014).toFixed(3);
+  const duration = (2.08 + (index % 3) * 0.08).toFixed(2);
+  return `<i class="firework-spark" style="--a: ${angle}deg; --r: ${distance}rem; --sd: ${delay}s; --t: ${duration}s;"></i>`;
 }
 
 function createPlayerMeldBoard(seat) {
