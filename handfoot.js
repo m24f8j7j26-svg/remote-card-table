@@ -9,6 +9,9 @@ const roundRules = [
   { draw: 4, open: 120, books: 4 },
   { draw: 5, open: 150, books: 5 },
 ];
+const startingHandSize = 11;
+const startingFootSize = 11;
+const openingStockSize = 4 * (13 * 4 + 2) - seats.length * (startingHandSize + startingFootSize) - 1;
 const localSessionKey = "remote-card-table-handfoot-session-v1";
 const remoteRelayOrigin = "https://cards.boyzofsummerpics.com";
 const apiBaseUrl =
@@ -83,7 +86,31 @@ function normalizeState(game) {
   if (!game.game) game.game = "handfoot";
   if (!Number.isFinite(game.revision)) game.revision = 0;
   if (!seats.includes(game.roundStarter)) game.roundStarter = "south";
+  if (typeof game.firstUpCardOpen !== "boolean") game.firstUpCardOpen = looksLikeOpeningUpCard(game);
   return game;
+}
+
+function isFirstUpCardAvailable(game = state) {
+  if (!game?.discard?.[0] || game.discard.length !== 1) return false;
+  if (game.turnStage !== "firstDiscard" && game.turnStage !== "draw") return false;
+  if (game.currentTurn !== game.roundStarter) return false;
+  if (game.firstUpCardOpen === false) return false;
+  return game.firstUpCardOpen === true || looksLikeOpeningUpCard(game);
+}
+
+function looksLikeOpeningUpCard(game) {
+  if (!game?.players || !game?.discard?.[0]) return false;
+  if (game.discard.length !== 1 || game.stock?.length !== openingStockSize) return false;
+  return seats.every((seat) => {
+    const player = game.players[seat];
+    return (
+      player?.active === "hand" &&
+      player.hand?.length === startingHandSize &&
+      player.foot?.length === startingFootSize &&
+      (player.melds || []).length === 0 &&
+      !player.opened
+    );
+  });
 }
 
 function bumpStateRevision() {
@@ -168,6 +195,7 @@ function createGame(previous = null) {
     roundStarter: starter,
     currentTurn: starter,
     turnStage: "firstDiscard",
+    firstUpCardOpen: true,
     wentOut: null,
     message: `${seatNames[starter]} may take the first up-card, or skip it and draw normally.`,
   };
@@ -581,6 +609,7 @@ function takeStock() {
     activeCards(mySeat).push(...drawn);
     markDrawn(drawn);
     state.turnStage = "play";
+    state.firstUpCardOpen = false;
     state.message = `${seatNames[mySeat]} skipped the first up-card and drew ${amount} from stock.`;
     broadcast();
     return;
@@ -591,16 +620,18 @@ function takeStock() {
   activeCards(mySeat).push(...drawn);
   markDrawn(drawn);
   state.turnStage = "play";
+  state.firstUpCardOpen = false;
   state.message = `${seatNames[mySeat]} drew ${amount} from stock.`;
   broadcast();
 }
 
 function takeFirstDiscard() {
-  if (!isMyTurn() || state.turnStage !== "firstDiscard" || !state.discard[0]) return;
+  if (!isMyTurn() || !isFirstUpCardAvailable()) return;
   const card = state.discard.shift();
   activeCards(mySeat).push(card);
   markDrawn([card]);
   state.turnStage = "firstDiscardTaken";
+  state.firstUpCardOpen = false;
   state.message = `${seatNames[mySeat]} took the first up-card. Discard one card, then draw normally.`;
   broadcast();
 }
@@ -608,12 +639,18 @@ function takeFirstDiscard() {
 function skipFirstDiscard() {
   if (!isMyTurn() || state.turnStage !== "firstDiscard") return;
   state.turnStage = "draw";
+  state.firstUpCardOpen = true;
   state.message = `${seatNames[mySeat]} skipped the first up-card. Draw from stock or pick up the discard pile.`;
   broadcast();
 }
 
 function takeDiscard() {
-  if (!isMyTurn() || state.turnStage !== "draw") return;
+  if (!isMyTurn()) return;
+  if (isFirstUpCardAvailable()) {
+    takeFirstDiscard();
+    return;
+  }
+  if (state.turnStage !== "draw") return;
   const check = canTakeDiscard(mySeat);
   if (!check.ok) {
     state.message = check.reason;
@@ -636,7 +673,7 @@ function markDrawn(cards) {
 function canTakeDiscard(seat) {
   const top = state.discard[0];
   if (!top) return { ok: false, reason: "Discard is empty" };
-  if (state.turnStage === "firstDiscard") return { ok: true };
+  if (isFirstUpCardAvailable()) return { ok: true, opening: true };
   if (isWild(top)) return { ok: false, reason: "Cannot pick up a wild card on top" };
   const matches = activeCards(seat).filter((card) => card.rank === top.rank && !isWild(card));
   const hasMatchingMeld = state.players[seat].melds.some((meld) => meld.rank === top.rank);
@@ -647,7 +684,7 @@ function canTakeDiscard(seat) {
 }
 
 function handleDiscardPileClick() {
-  if (state.turnStage === "firstDiscard") {
+  if (isFirstUpCardAvailable()) {
     takeFirstDiscard();
     return;
   }
@@ -1109,7 +1146,7 @@ function renderActions() {
   if (isMyTurn() && state.turnStage === "draw") {
     addAction("Draw stock", takeStock);
     const check = canTakeDiscard(mySeat);
-    addAction(check.ok ? "Pick discard" : check.reason, takeDiscard, !check.ok);
+    addAction(check.opening ? "Take first up-card" : check.ok ? "Pick discard" : check.reason, takeDiscard, !check.ok);
   }
   if (isMyTurn() && state.turnStage === "play") {
     addAction("New meld", () => meldSelected(null));
